@@ -26,8 +26,11 @@ PluginEditor::PluginEditor (PluginProcessor& p)
         addAndMakeVisible (faderLabels[i]);
     }
 
-    // Left sidebar knobs
+    // Left sidebar knobs and Titles
     juce::Slider* leftKnobs[] = { &rhythmMorphKnob, &restKnob, &legatoKnob };
+    juce::Label* leftTitles[] = { &rhythmMorphTitle, &restTitle, &legatoTitle };
+    juce::String leftNames[] = { "MORPH", "REST", "LEGATO" };
+
     for (int i = 0; i < 3; ++i)
     {
         leftKnobs[i]->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -36,10 +39,19 @@ PluginEditor::PluginEditor (PluginProcessor& p)
         leftKnobs[i]->setColour (juce::Slider::textBoxOutlineColourId, juce::Colour (0x00000000));
         leftKnobs[i]->setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xFF888888));
         addAndMakeVisible (leftKnobs[i]);
+
+        leftTitles[i]->setText (leftNames[i], juce::dontSendNotification);
+        leftTitles[i]->setFont (juce::FontOptions (10.0f).withStyle ("bold"));
+        leftTitles[i]->setJustificationType (juce::Justification::centred);
+        leftTitles[i]->setColour (juce::Label::textColourId, juce::Colour (0xFF55555c));
+        addAndMakeVisible (leftTitles[i]);
     }
 
-    // Right sidebar knobs
+    // Right sidebar knobs and Titles
     juce::Slider* rightKnobs[] = { &entropyKnob, &harmonyKnob, &chaosKnob };
+    juce::Label* rightTitles[] = { &entropyTitle, &harmonyTitle, &chaosTitle };
+    juce::String rightNames[] = { "ENTROPY", "HARMONY", "CHAOS" };
+
     for (int i = 0; i < 3; ++i)
     {
         rightKnobs[i]->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -48,6 +60,12 @@ PluginEditor::PluginEditor (PluginProcessor& p)
         rightKnobs[i]->setColour (juce::Slider::textBoxOutlineColourId, juce::Colour (0x00000000));
         rightKnobs[i]->setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xFF888888));
         addAndMakeVisible (rightKnobs[i]);
+
+        rightTitles[i]->setText (rightNames[i], juce::dontSendNotification);
+        rightTitles[i]->setFont (juce::FontOptions (10.0f).withStyle ("bold"));
+        rightTitles[i]->setJustificationType (juce::Justification::centred);
+        rightTitles[i]->setColour (juce::Label::textColourId, juce::Colour (0xFF55555c));
+        addAndMakeVisible (rightTitles[i]);
     }
 
     // Crossfader
@@ -66,17 +84,17 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     latchButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xFF00D2FF));
     latchButton.setColour (juce::TextButton::textColourOnId, juce::Colour (0xFF000000));
 
-    // DICE Buttons
+    // DICE Buttons with Vibrant Red and Green Glows when clicked
     addAndMakeVisible (diceMelodyButton);
     diceMelodyButton.setButtonText ("DICE M");
-    diceMelodyButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF221100));
-    diceMelodyButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFFFFB300));
+    diceMelodyButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF220505));
+    diceMelodyButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFFFF3333)); // Ruby Red
     diceMelodyButton.onClick = [this] { processor.diceMelody(); };
 
     addAndMakeVisible (diceRhythmButton);
     diceRhythmButton.setButtonText ("DICE R");
-    diceRhythmButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF221100));
-    diceRhythmButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFFFFB300));
+    diceRhythmButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF052205));
+    diceRhythmButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFF33FF33)); // Emerald Green
     diceRhythmButton.onClick = [this] { processor.diceRhythm(); };
 
     // Toggle-to-Capture / Toggle-to-Clear Scenes
@@ -137,7 +155,7 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     rootKeyBox.setColour (juce::ComboBox::textColourId, juce::Colour (0xFF00D2FF));
 
     addAndMakeVisible (scaleTypeBox);
-    scaleTypeBox.addItemList (juce::StringArray { "Major", "Minor", "Pentatonic", "Dorian" }, 1);
+    scaleTypeBox.addItemList (juce::StringArray { "Major", "Minor", "Pentatonic Minor", "Pentatonic Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Harmonic Minor", "Melodic Minor" }, 1);
     scaleTypeBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xFF111111));
     scaleTypeBox.setColour (juce::ComboBox::outlineColourId, juce::Colour (0xFF222222));
     scaleTypeBox.setColour (juce::ComboBox::textColourId, juce::Colour (0xFFFFB300));
@@ -267,15 +285,30 @@ void PluginEditor::resized()
     auto rightSidebar = area.removeFromRight (95);
     
     int leftRowHeight = leftSidebar.getHeight() / 4;
-    rhythmMorphKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight).reduced (2));
-    restKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight).reduced (2));
-    legatoKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight).reduced (2));
+    
+    // Position Left Knobs and Title labels
+    rhythmMorphTitle.setBounds (leftSidebar.removeFromTop (12).reduced (2, 0));
+    rhythmMorphKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight - 12).reduced (2));
+    
+    restTitle.setBounds (leftSidebar.removeFromTop (12).reduced (2, 0));
+    restKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight - 12).reduced (2));
+    
+    legatoTitle.setBounds (leftSidebar.removeFromTop (12).reduced (2, 0));
+    legatoKnob.setBounds (leftSidebar.removeFromTop (leftRowHeight - 12).reduced (2));
+    
     latchButton.setBounds (leftSidebar.reduced (10, 8));
 
+    // Position Right Knobs and Title labels
     int rightRowHeight = rightSidebar.getHeight() / 4;
-    entropyKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight).reduced (2));
-    harmonyKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight).reduced (2));
-    chaosKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight).reduced (2));
+    
+    entropyTitle.setBounds (rightSidebar.removeFromTop (12).reduced (2, 0));
+    entropyKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight - 12).reduced (2));
+    
+    harmonyTitle.setBounds (rightSidebar.removeFromTop (12).reduced (2, 0));
+    harmonyKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight - 12).reduced (2));
+    
+    chaosTitle.setBounds (rightSidebar.removeFromTop (12).reduced (2, 0));
+    chaosKnob.setBounds (rightSidebar.removeFromTop (rightRowHeight - 12).reduced (2));
     
     auto diceArea = rightSidebar;
     diceMelodyButton.setBounds (diceArea.removeFromLeft (diceArea.getWidth() / 2).reduced (2, 8));

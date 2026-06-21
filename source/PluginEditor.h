@@ -6,7 +6,7 @@
 #include "PluginProcessor.h"
 
 // ==============================================================================
-// Active OLED Display
+// Active OLED Display with Beat-division visual color coding
 // ==============================================================================
 class OledDisplay : public juce::Component, public juce::Timer
 {
@@ -54,14 +54,17 @@ public:
 
             if (i == processor.currentStep && isPlaying)
             {
-                g.setColour (juce::Colour (0xFF00FFFF)); // Highlight electric blue
+                // Color-code the active beat division to prevent gaudy layout
+                if (i == 0)      g.setColour (juce::Colour (0xFF33FF33)); // Beat 1: Emerald Green
+                else if (i == 4) g.setColour (juce::Colour (0xFFFF3333)); // Beat 2: Ruby Red
+                else             g.setColour (juce::Colour (0xFF00FFFF)); // Others: Electric Blue
                 g.fillRect (bar.expanded(2, 2));
             }
             else
             {
-                if (i % 3 == 0) g.setColour (juce::Colour (0xFF00D2FF)); // Aqua
+                if (i % 3 == 0)      g.setColour (juce::Colour (0xFF00D2FF)); // Aqua
                 else if (i % 4 == 0) g.setColour (juce::Colour (0xFFB080FF)); // Lavender
-                else g.setColour (juce::Colour (0xFFFFB300)); // Amber
+                else                 g.setColour (juce::Colour (0xFFFFB300)); // Amber
                 g.fillRect (bar);
             }
         }
@@ -105,8 +108,13 @@ private:
     juce::Slider fader1, fader2, fader3, fader4, fader5, fader6, fader7, fader8;
     juce::Label faderLabel1, faderLabel2, faderLabel3, faderLabel4, faderLabel5, faderLabel6, faderLabel7, faderLabel8;
 
+    // Rotary Knobs and static Titles
     juce::Slider rhythmMorphKnob, restKnob, legatoKnob;
+    juce::Label rhythmMorphTitle, restTitle, legatoTitle;
+
     juce::Slider entropyKnob, harmonyKnob, chaosKnob;
+    juce::Label entropyTitle, harmonyTitle, chaosTitle;
+
     juce::Slider morphCrossfader;
 
     juce::TextButton latchButton;

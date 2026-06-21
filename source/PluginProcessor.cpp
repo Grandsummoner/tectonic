@@ -50,7 +50,7 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 }
 
 // ==============================================================================
-// REAL-TIME DUAL-CLOCK SEQUENCER ENGINE with PITCH-QUANTIZER
+// REAL-TIME DUAL-CLOCK SEQUENCER ENGINE (WITH LATCH CHORD MEMORY)
 // ==============================================================================
 void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
@@ -95,12 +95,14 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         {
             int note = msg.getNoteNumber();
             
+            // Add to active fingers-on-keys tracker
             if (std::find (activeHeldNotes.begin(), activeHeldNotes.end(), note) == activeHeldNotes.end())
             {
                 activeHeldNotes.push_back (note);
                 std::sort (activeHeldNotes.begin(), activeHeldNotes.end());
             }
 
+            // Latch Mode: If starting a brand new chord, wipe the latch memory
             if (isLatchActive)
             {
                 if (isFirstNoteOfNewChord)
@@ -120,6 +122,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             int note = msg.getNoteNumber();
             activeHeldNotes.erase (std::remove (activeHeldNotes.begin(), activeHeldNotes.end(), note), activeHeldNotes.end());
             
+            // If all physical keys are released, flag that the next note starts a new chord
             if (activeHeldNotes.empty())
             {
                 isFirstNoteOfNewChord = true;
@@ -127,7 +130,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         }
     }
 
-    // BYPASS RULE: If DAW is stopped AND Latch is off AND no physical keys are held, bypass
+    // BYPASS RULE: If DAW is stopped and LATCH is off and no keys held, bypass
     if (! isPlaying && ! isLatchActive && activeHeldNotes.empty())
     {
         currentStep = 0;
@@ -156,7 +159,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     {
         if (isPlaying)
         {
-            // Clock 1: PPQ-based DAW Grid Sync (DAW is playing)
+            // Clock 1: PPQ-based DAW Grid Sync
             double stepLengthPPQ = 0.25;
             int stepIndex = static_cast<int> (std::floor (ppqPosition / stepLengthPPQ)) % 8;
 
@@ -169,7 +172,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         }
         else
         {
-            // Clock 2: Standalone Free-Running Sample-Clock (DAW is stopped but keys held/latched)
+            // Clock 2: Standalone Free-Running Sample-Clock
             double samplesPerBeat = mSampleRate * (60.0 / bpm);
             double stepLengthInSamples = samplesPerBeat * 0.25;
 
@@ -190,11 +193,11 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         currentStep = 0;
     }
 
-    midiMessages.swapWith (processedMidi);
+    midiMessages.swapWith(processedMidi);
 }
 
 // ==============================================================================
-// KEY & SCALE PITCH QUANTIZER (ROBUST ALGORITHMIC SCALE MAPPING)
+// KEY & SCALE PITCH QUANTIZER (10 NATIVE SCALES SUPPORTED)
 // ==============================================================================
 void PluginProcessor::triggerArpStep (float stepProbability, float activeRest, float activeLegato, const std::vector<int>& notesToPlay, juce::MidiBuffer& processedMidi, double bpm)
 {
@@ -209,27 +212,26 @@ void PluginProcessor::triggerArpStep (float stepProbability, float activeRest, f
             mLastNotePlayed = -1;
         }
 
-        // 1. Get current scale parameters from UI selections
         int rootKeyIndex = static_cast<int> (*apvts.getRawParameterValue (IDs::rootKey.getParamID()));
         int scaleTypeIndex = static_cast<int> (*apvts.getRawParameterValue (IDs::scaleType.getParamID()));
 
-        // Scale Degree offsets (Major, Minor, Pentatonic, Dorian)
-        std::vector<int> scaleOffsets = { 0, 2, 4, 5, 7, 9, 11, 12 }; // Default Major
-        if (scaleTypeIndex == 1) // Minor
-            scaleOffsets = { 0, 2, 3, 5, 7, 8, 10, 12 };
-        else if (scaleTypeIndex == 2) // Pentatonic
-            scaleOffsets = { 0, 2, 4, 7, 9, 12, 14, 16 };
-        else if (scaleTypeIndex == 3) // Dorian
-            scaleOffsets = { 0, 2, 3, 5, 7, 9, 10, 12 };
+        // Scale Degree offsets
+        std::vector<int> scaleOffsets = { 0, 2, 4, 5, 7, 9, 11, 12 }; // 0: Major
+        if (scaleTypeIndex == 1)      scaleOffsets = { 0, 2, 3, 5, 7, 8, 10, 12 }; // 1: Natural Minor
+        else if (scaleTypeIndex == 2) scaleOffsets = { 0, 3, 5, 7, 10, 12, 15, 17 }; // 2: Pentatonic Minor
+        else if (scaleTypeIndex == 3) scaleOffsets = { 0, 2, 4, 7, 9, 12, 14, 16 };  // 3: Pentatonic Major
+        else if (scaleTypeIndex == 4) scaleOffsets = { 0, 2, 3, 5, 7, 9, 10, 12 };  // 4: Dorian
+        else if (scaleTypeIndex == 5) scaleOffsets = { 0, 1, 3, 5, 7, 8, 10, 12 };  // 5: Phrygian
+        else if (scaleTypeIndex == 6) scaleOffsets = { 0, 2, 4, 6, 7, 9, 11, 12 };  // 6: Lydian
+        else if (scaleTypeIndex == 7) scaleOffsets = { 0, 2, 4, 5, 7, 9, 10, 12 };  // 7: Mixolydian
+        else if (scaleTypeIndex == 8) scaleOffsets = { 0, 2, 3, 5, 7, 8, 11, 12 };  // 8: Harmonic Minor
+        else if (scaleTypeIndex == 9) scaleOffsets = { 0, 2, 3, 5, 7, 9, 11, 12 };  // 9: Melodic Minor
 
-        // 2. Select base note from our chord tonal pool
         int chordNote = notesToPlay[currentStep % notesToPlay.size()];
         
-        // 3. Snap and quantize to the active scale degree
         int baseOctave = (chordNote / 12) * 12;
         int quantizedNote = baseOctave + rootKeyIndex + scaleOffsets[currentStep];
 
-        // Ensure notes stay inside valid MIDI boundaries (0–127)
         quantizedNote = juce::jlimit (0, 127, quantizedNote);
 
         processedMidi.addEvent (juce::MidiMessage::noteOn (1, quantizedNote, static_cast<juce::uint8>(100)), 0);
@@ -357,9 +359,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
     params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::rootKey, "Root Key", 
         juce::StringArray { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B" }, 0));
 
-    // Scale Selector Dropdown (0 = Major, 1 = Minor, 2 = Pentatonic, 3 = Dorian)
+    // Scale Selector Dropdown (10 Native Scales!)
     params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::scaleType, "Scale", 
-        juce::StringArray { "Major", "Natural Minor", "Pentatonic", "Dorian" }, 0));
+        juce::StringArray { "Major", "Natural Minor", "Pentatonic Minor", "Pentatonic Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Harmonic Minor", "Melodic Minor" }, 0));
 
     return { params.begin(), params.end() };
 }
