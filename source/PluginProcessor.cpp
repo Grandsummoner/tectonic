@@ -3,8 +3,12 @@
 
 PluginProcessor::PluginProcessor()
     : AudioProcessor (BusesProperties()
+                      #if ! JucePlugin_IsMidiEffect
+                       #if ! JucePlugin_IsSynth
                         .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       #endif
                         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                      #endif
                       ),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
@@ -17,44 +21,14 @@ PluginProcessor::~PluginProcessor() {}
 const juce::String PluginProcessor::getName() const { return JucePlugin_Name; }
 bool PluginProcessor::acceptsMidi() const { return true; }
 bool PluginProcessor::producesMidi() const { return true; }
+bool PluginProcessor::isMidiEffect() const { return false; }
+double PluginProcessor::getTailLengthSeconds() const { return 0.0; }
+int PluginProcessor::getNumPrograms() { return 1; }
+int PluginProcessor::getCurrentProgram() { return 0; }
+void PluginProcessor::setCurrentProgram (int index) { juce::ignoreUnused (index); }
+const juce::String PluginProcessor::getProgramName (int index) { juce::ignoreUnused (index); return {}; }
+void PluginProcessor::changeProgramName (int index, const juce::String& newName) { juce::ignoreUnused (index, newName); }
 
-bool PluginProcessor::isMidiEffect() const
-{
-    return false; // Revert to standard Instrument so Ableton allows multi-track routing
-}
-
-double PluginProcessor::getTailLengthSeconds() const
-{
-    return 0.0;
-}
-
-int PluginProcessor::getNumPrograms()
-{
-    return 1;
-}
-
-int PluginProcessor::getCurrentProgram()
-{
-    return 0;
-}
-
-void PluginProcessor::setCurrentProgram (int index)
-{
-    juce::ignoreUnused (index);
-}
-
-const juce::String PluginProcessor::getProgramName (int index)
-{
-    juce::ignoreUnused (index);
-    return {};
-}
-
-void PluginProcessor::changeProgramName (int index, const juce::String& newName)
-{
-    juce::ignoreUnused (index, newName);
-}
-
-// ==============================================================================
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     mSampleRate = sampleRate;
@@ -63,6 +37,7 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     activeHeldNotes.clear();
     latchedNotes.clear();
     isFirstNoteOfNewChord = true;
+    juce::ignoreUnused (samplesPerBlock);
 }
 
 void PluginProcessor::releaseResources() {}
@@ -198,6 +173,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     }
 
     midiMessages.swapWith(processedMidi);
+    juce::ignoreUnused (activeLegato);
 }
 
 bool PluginProcessor::hasEditor() const { return true; }
@@ -271,3 +247,48 @@ void PluginProcessor::captureSceneB()
         sceneB.faders[i] = *apvts.getRawParameterValue (juce::String ("fader" + juce::String (i + 1)));
 
     sceneB.rhythmMorph = *apvts.getRawParameterValue (IDs::rhythmMorph.getParamID());
+    sceneB.rest = *apvts.getRawParameterValue (IDs::rest.getParamID());
+    sceneB.legato = *apvts.getRawParameterValue (IDs::legato.getParamID());
+    sceneB.entropy = *apvts.getRawParameterValue (IDs::entropy.getParamID());
+    sceneB.harmony = *apvts.getRawParameterValue (IDs::harmony.getParamID());
+    sceneB.chaos = *apvts.getRawParameterValue (IDs::chaos.getParamID());
+    hasSceneB = true;
+}
+
+void PluginProcessor::diceMelody()
+{
+    auto* random = &juce::Random::getSystemRandom();
+    for (int i = 0; i < 8; ++i)
+    {
+        float randomVal = random->nextFloat();
+        apvts.getParameter (juce::String ("fader" + juce::String (i + 1)))->setValueNotifyingHost (randomVal);
+    }
+}
+
+void PluginProcessor::diceRhythm()
+{
+    auto* random = &juce::Random::getSystemRandom();
+    apvts.getParameter (IDs::rhythmMorph.getParamID())->setValueNotifyingHost (random->nextFloat());
+    apvts.getParameter (IDs::rest.getParamID())->setValueNotifyingHost (random->nextFloat() * 0.7f);
+    apvts.getParameter (IDs::legato.getParamID())->setValueNotifyingHost (0.1f + random->nextFloat() * 0.8f);
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+    for (int i = 1; i <= 8; ++i)
+        params.push_back (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID ("fader" + juce::String (i), 1), "Fader " + juce::String (i), 0.0f, 1.0f, 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::rhythmMorph, "Rhythm Morph", 0.0f, 1.0f, 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::rest, "Rest", 0.0f, 1.0f, 0.1f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::legato, "Legato", 0.0f, 1.0f, 0.5f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::entropy, "Entropy", 0.0f, 1.0f, 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::harmony, "Harmony", 0.0f, 1.0f, 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::chaos, "Chaos", 0.0f, 1.0f, 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::morph, "Morph Crossfader", 0.0f, 1.0f, 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterBool> (IDs::latch, "Latch Mode", false));
+
+    return { params.begin(), params.end() };
+}
+
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new PluginProcessor(); }
