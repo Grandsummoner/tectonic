@@ -3,7 +3,6 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <juce_audio_processors/juce_audio_processors.h>
-#include <cstdint> // Standard integer types
 #include "PluginProcessor.h"
 
 // ==============================================================================
@@ -99,7 +98,7 @@ private:
     juce::TextButton presetButtons[8];
 
     // Standard cross-platform integer array (prevents MSVC parser errors)
-    uint32_t presetPressStartTime[8] = { 0 };
+    int presetPressStartTime[8] = { 0 };
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fader1Attachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fader2Attachment;
@@ -115,4 +114,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> legatoAttachment;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> entropyAttachment;
-    s
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonyAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> chaosAttachment;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> latchAttachment;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
+};

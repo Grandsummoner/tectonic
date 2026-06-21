@@ -53,16 +53,13 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Save and load presets
     void savePreset (int slotIndex);
     void loadPreset (int slotIndex);
     bool isPresetSaved (int slotIndex) const { return presetSlotsSaved[slotIndex]; }
 
-    // Dice functions
     void diceMelody();
     void diceRhythm();
 
-    // Scene Capture Functions
     void captureSceneA();
     void captureSceneB();
 
@@ -71,7 +68,6 @@ public:
     bool hasSceneA = false;
     bool hasSceneB = false;
 
-    // Playhead step for UI visualizer
     int currentStep = 0;
     std::vector<int> activeHeldNotes;
 
@@ -80,12 +76,10 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    // Arpeggiator internal engine variables
     double mSampleRate = 44100.0;
     int mTimeInSamples = 0;
     int mLastNotePlayed = -1;
     
-    // Preset memory
     SceneState presets[8];
     bool presetSlotsSaved[8] = { false };
 
