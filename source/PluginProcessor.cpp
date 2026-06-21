@@ -85,7 +85,7 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 // ==============================================================================
 // REAL-TIME ARPEGGIATOR MIDI CLOCK ENGINE (WITH LATCH CHORD MEMORY)
 // ==============================================================================
-void PluginProcessor::processBlock (juce::AudioProcessor::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     // Do NOT clear the audio buffer. Let audio pass through completely untouched
     juce::ignoreUnused (buffer);
