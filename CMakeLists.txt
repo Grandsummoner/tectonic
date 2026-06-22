@@ -6,10 +6,11 @@ include(CPM)
 include(PamplejuceMacOS)
 include(JUCEDefaults)
 
-set(PROJECT_NAME "Pamplejuce")
-set(PRODUCT_NAME "Pamplejuce Demo")
-set(COMPANY_NAME "Pamplejuce Company")
-set(BUNDLE_ID "com.pamplejuce.pamplejuce")
+# Rebranded Project Variables
+set(PROJECT_NAME "NavyArp")
+set(PRODUCT_NAME "Navy Arp")
+set(COMPANY_NAME "Navy Audio")
+set(BUNDLE_ID "com.navyaudio.navyarp")
 set(FORMATS Standalone VST3)
 
 set(CMAKE_POLICY_DEFAULT_CMP0141 NEW CACHE STRING "" FORCE)
@@ -27,8 +28,8 @@ juce_add_plugin("${PROJECT_NAME}"
     COMPANY_NAME "${COMPANY_NAME}"
     BUNDLE_ID "${BUNDLE_ID}"
     COPY_PLUGIN_AFTER_BUILD TRUE
-    PLUGIN_MANUFACTURER_CODE Pamp
-    PLUGIN_CODE P001
+    PLUGIN_MANUFACTURER_CODE Navy
+    PLUGIN_CODE Narp
     FORMATS "${FORMATS}"
     PRODUCT_NAME "${PRODUCT_NAME}"
     IS_SYNTH TRUE
@@ -58,7 +59,7 @@ target_compile_definitions(SharedCode
     JUCE_VST3_CAN_REPLACE_VST2=0
     CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
     VERSION="${CURRENT_VERSION}"
-    PRODUCT_NAME_WITHOUT_VERSION="Pamplejuce"
+    PRODUCT_NAME_WITHOUT_VERSION="NavyArp"
 )
 
 target_link_libraries(SharedCode
