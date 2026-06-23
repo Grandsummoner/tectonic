@@ -18,7 +18,7 @@ PluginProcessor::~PluginProcessor() {}
 const juce::String PluginProcessor::getName() const { return JucePlugin_Name; }
 bool PluginProcessor::acceptsMidi() const { return true; }
 bool PluginProcessor::producesMidi() const { return true; }
-bool PluginProcessor::isMidiEffect() const { return false; } // MUST be standard Instrument to allow 2-track routing in Ableton
+bool PluginProcessor::isMidiEffect() const { return false; } // VST3 Instrument format for multi-track Ableton routing
 double PluginProcessor::getTailLengthSeconds() const { return 0.0; }
 int PluginProcessor::getNumPrograms() { return 1; }
 int PluginProcessor::getCurrentProgram() { return 0; }
@@ -271,7 +271,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             bool isRatchetStep = euclidRatchets[currentStep] == 1;
 
             bool shouldPlay = (juce::Random::getSystemRandom().nextFloat() <= faderProb);
-            bool isRest = (juce::Random::getSystemRandom().nextFloat() <= modRest);
+            bool isRest = (juce::Random::getSystemRandom().nextFloat() <= activeRest);
 
             if (shouldPlay && ! isRest)
             {
@@ -304,7 +304,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
                 // Chaos Octave Leaps (Sample & Hold Quantized)
                 if (modChaos > 0.2f && juce::Random::getSystemRandom().nextFloat() <= modChaos)
-                    targetPitch += (juce::Random::getSystemBool() ? 12 : -12);
+                    targetPitch += (juce::Random::getSystemRandom().nextBool() ? 12 : -12);
 
                 targetPitch = juce::jlimit(0, 127, targetPitch);
                 int durationSamples = static_cast<int>(stepSamples * modLegato);
@@ -472,16 +472,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
     params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::chaos, "Chaos", 0.0f, 1.0f, 0.0f));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::morph, "Morph Crossfader", 0.0f, 1.0f, 0.0f));
     params.push_back (std::make_unique<juce::AudioParameterBool>  (IDs::latch, "Latch Mode", false));
-    params.push_back (std::make_unique<juce::AudioParameterBool>  (IDs::chordMode, "Chord Mode", false));
-
-    params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::rootKey, "Root Key", 
-        juce::StringArray { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B" }, 0));
-
-    params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::scaleType, "Scale", 
-        juce::StringArray { "Major", "Natural Minor", "Pentatonic Minor", "Pentatonic Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Harmonic Minor", "Melodic Minor" }, 1));
-
-    params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::cycleLength, "Cycle Length", 
-        juce::StringArray { "1 Bar", "2 Bars", "4 Bars", "8 Bars" }, 2)); // Default 4 Bars
 
     return { params.begin(), params.end() };
 }
