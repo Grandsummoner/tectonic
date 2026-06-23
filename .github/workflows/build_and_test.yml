@@ -1,7 +1,7 @@
 name: Build and Test
 
 on:
-  workflow_dispatch: # Lets you run a build manually from the Actions UI
+  workflow_dispatch:
   push:
   pull_request:
 
@@ -12,8 +12,6 @@ concurrency:
 env:
   BUILD_TYPE: Release
   BUILD_DIR: Builds
-  SCCACHE_GHA_ENABLED: true
-  SCCACHE_CACHE_MULTIARCH: 1
   IPP_DIR: C:\Program Files (x86)\Intel\oneAPI\ipp\latest\lib\cmake\ipp
 
 defaults:
@@ -34,48 +32,35 @@ jobs:
             pluginval-binary: ./pluginval.exe
 
     steps:
-      # Setup MSVC toolchain and developer command prompt
       - uses: ilammy/msvc-dev-cmd@v1
 
-      # Install Intel IPP library for JUCE audio optimizations
       - name: Install IPP (Windows)
         run: |
           nuget install intelipp.static.win-x64 -Version 2022.3.0.387
 
-      # Install Ninja Build System for fast compilation
       - name: Install Ninja (Windows)
         run: choco install ninja
 
-      # Pull code from your repository
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # Caches compiled files to make subsequent builds run in seconds
-      - name: Cache the build
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      # Configure CMake project
       - name: Configure
-        run: cmake -B ${{ env.BUILD_DIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -G Ninja .
+        run: cmake -B ${{ env.BUILD_DIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -G Ninja .
 
-      # Build the binaries (VST3, CLAP, Standalone)
       - name: Build
         run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel
 
-      # Runs C++ automated tests
       - name: Test & Benchmarks
         working-directory: ${{ env.BUILD_DIR }}
         run: ctest --verbose --output-on-failure
 
-      # Read configuration details
       - name: Read in .env from CMake
         run: |
           cat .env
           cat .env >> $GITHUB_ENV
 
-      # Map directory structures for packaging
       - name: Set additional env vars for next steps
         run: |
           ARTIFACTS_PATH=${{ env.BUILD_DIR }}/${{ env.PROJECT_NAME }}_artefacts/${{ env.BUILD_TYPE }}
@@ -85,20 +70,17 @@ jobs:
           echo "STANDALONE_PATH=$ARTIFACTS_PATH/Standalone/${{ env.PRODUCT_NAME }}.exe" >> $GITHUB_ENV
           echo "ARTIFACT_NAME=${{ env.PRODUCT_NAME }}-${{ env.VERSION }}-${{ runner.os }}" >> $GITHUB_ENV
 
-      # Run basic plugin validation via Pluginval
       - name: Pluginval
         run: |
           curl -LO "https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_Windows.zip"
           7z x pluginval_Windows.zip
           ${{ matrix.pluginval-binary }} --strictness-level 5 --verbose --validate "${{ env.VST3_PATH }}"
 
-      # Create installer executable
       - name: Generate Installer
         run: |
           iscc "packaging\installer.iss"
           mv "packaging/Output/${{ env.ARTIFACT_NAME }}.exe" "${{ env.ARTIFACTS_PATH }}/"
 
-      # Upload the compiled Installer (.exe) directly as a downloadable GitHub Action Artifact
       - name: Upload Exe (Windows)
         uses: actions/upload-artifact@v4
         with:
