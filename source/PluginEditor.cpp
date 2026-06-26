@@ -6,7 +6,7 @@ PluginEditor::PluginEditor (PluginProcessor& p)
 {
     addAndMakeVisible (oledDisplay);
 
-    // Register active parameter listener for the Theme switcher [3]
+    // Register active parameter listener for the Theme switcher [3] 
     processor.apvts.addParameterListener ("panelTheme", this);
 
     // Bottom faders (Linear Chroma Customization) [5]
@@ -81,7 +81,6 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     morphCrossfader.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     morphCrossfader.setColour (juce::Slider::thumbColourId, juce::Colour (0xFFFFFFFF));
     morphCrossfader.setColour (juce::Slider::trackColourId, juce::Colour (0xFF222222));
-    morphCrossfader.setLookAndFeel (&chromaLookAndFeel); // Attach crossfader style [5]
     addAndMakeVisible (morphCrossfader);
 
     // Latch toggle
@@ -172,6 +171,22 @@ PluginEditor::PluginEditor (PluginProcessor& p)
             saveButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF151518));
         }
     };
+
+    // 8 Preset Slots [CRITICAL FIX - Re-enabled Setup]
+    for (int i = 0; i < 8; ++i)
+    {
+        addAndMakeVisible (presetButtons[i]);
+        presetButtons[i].setButtonText (juce::String (i + 1));
+        presetButtons[i].setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF050505));
+        presetButtons[i].setColour (juce::TextButton::textColourOffId, juce::Colour (0xFF444444));
+
+        presetButtons[i].onClick = [this, i] {
+            if (chordModeButton.getToggleState()) processor.triggerDiatonicChordPad(i); 
+            else processor.loadPreset(i); 
+        };
+
+        presetButtons[i].addMouseListener (this, false);
+    }
 
     // Configure Key & Scale Dropdowns
     addAndMakeVisible (rootKeyBox);
@@ -621,29 +636,6 @@ void PluginEditor::timerCallback()
         }
     }
 
-    // Keep Scene Active Button Colors Synced beautifully
-    if (processor.hasSceneA)
-    {
-        sceneAButton.setColour (juce::TextButton::buttonColourId, t.leftAccent);
-        sceneAButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFF000000));
-    }
-    else
-    {
-        sceneAButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF18181C));
-        sceneAButton.setColour (juce::TextButton::textColourOffId, t.textDim);
-    }
-
-    if (processor.hasSceneB)
-    {
-        sceneBButton.setColour (juce::TextButton::buttonColourId, t.rightAccent);
-        sceneBButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xFF000000));
-    }
-    else
-    {
-        sceneBButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF18181C));
-        sceneBButton.setColour (juce::TextButton::textColourOffId, t.textDim);
-    }
-
     // Dynamic preset saved status glow
     for (int i = 0; i < 8; ++i)
     {
@@ -755,4 +747,53 @@ void PluginEditor::resized()
         leftKnobs[i]->setBounds (row.reduced (4, 2));
     }
     
-    auto leftB
+    auto leftBtnArea = leftSidebar.reduced (5, 2);
+    int leftBtnHeight = leftBtnArea.getHeight() / 2;
+    saveButton.setBounds (leftBtnArea.removeFromTop (leftBtnHeight).reduced (2));
+    recallButton.setBounds (leftBtnArea.reduced (2));
+
+    // Right Sidebar: 4 Knobs (Entropy, Harmony, Chaos, Octaves) + Vertical Buttons [4]
+    int rightRowHeight = rightSidebar.getHeight() / 5;
+    juce::Label* rightTitles[] = { &entropyTitle, &harmonyTitle, &chaosTitle, &octavesTitle };
+    juce::Slider* rightKnobs[] = { &entropyKnob, &harmonyKnob, &chaosKnob, &octavesKnob };
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        auto row = rightSidebar.removeFromTop (rightRowHeight);
+        rightTitles[i]->setBounds (row.removeFromTop (16));
+        rightKnobs[i]->setBounds (row.reduced (4, 2));
+    }
+    
+    auto diceArea = rightSidebar.reduced (5, 2);
+    int diceBtnHeight = diceArea.getHeight() / 2;
+    diceMelodyButton.setBounds (diceArea.removeFromTop (diceBtnHeight).reduced (2));
+    diceRhythmButton.setBounds (diceArea.reduced (2));
+
+    // 4. Center Section: Dropdown Bar, OLED Display, and 8 Preset Buttons [4]
+    int presetHeight = static_cast<int>(totalHeight * 0.06f);
+    auto presetArea = area.removeFromBottom (juce::jlimit (24, 36, presetHeight));
+    auto oledArea = area.reduced (5, 5);
+    
+    // Proportional Dropdown Bar positioned safely above the graphic display with Latch/Chords buttons
+    int dropdownBarHeight = static_cast<int>(totalHeight * 0.07f);
+    auto dropdownBarArea = oledArea.removeFromTop (juce::jlimit (28, 40, dropdownBarHeight));
+    int totalCenterWidth = dropdownBarArea.getWidth();
+    
+    // Distribute space symmetrically
+    int selectWidth = (totalCenterWidth - 140) / 3;
+    rootKeyBox.setBounds (dropdownBarArea.removeFromLeft (selectWidth).reduced (3, 2));
+    cycleLengthBox.setBounds (dropdownBarArea.removeFromLeft (selectWidth).reduced (3, 2));
+    scaleTypeBox.setBounds (dropdownBarArea.removeFromLeft (selectWidth).reduced (3, 2));
+    
+    // Latch and Chords button placements next to the dropdowns
+    latchButton.setBounds (dropdownBarArea.removeFromLeft (65).reduced (2, 2));
+    chordModeButton.setBounds (dropdownBarArea.reduced (2, 2));
+    
+    oledDisplay.setBounds (oledArea.reduced (0, 5));
+
+    int presetWidth = presetArea.getWidth() / 8;
+    for (int i = 0; i < 8; ++i)
+    {
+        presetButtons[i].setBounds (presetArea.removeFromLeft (presetWidth).reduced (4, 3));
+    }
+}
