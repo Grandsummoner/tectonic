@@ -35,9 +35,15 @@ struct SceneState {
     float rhythmMorph = 0.0f;
     float rest = 0.1f;
     float legato = 0.5f;
+    float rate = 2.0f; // Standard index (1/16)
     float entropy = 0.0f;
     float harmony = 0.0f;
     float chaos = 0.0f;
+    float octaves = 1.0f;
+
+    // Full 16-channel LFO parameter states [NEW]
+    int lfoRates[8] = { 0 };
+    float lfoDepths[8] = { 0.0f };
 };
 
 class PluginProcessor : public juce::AudioProcessor
@@ -69,7 +75,15 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Presets & Scenes
+    // Save and Load logic for the 4x4 Octatrack-style Scene engine [NEW]
+    void saveSceneA (int slotIndex);
+    void loadSceneA (int slotIndex);
+    void saveSceneB (int slotIndex);
+    void loadSceneB (int slotIndex);
+
+    bool isSceneASaved (int slotIndex) const { return sceneASlotsSaved[slotIndex]; }
+    bool isSceneBSaved (int slotIndex) const { return sceneBSlotsSaved[slotIndex]; }
+
     void savePreset (int slotIndex);
     void loadPreset (int slotIndex);
     bool isPresetSaved (int slotIndex) const { return presetSlotsSaved[slotIndex]; }
@@ -82,6 +96,7 @@ public:
     // Generative triggers
     void diceMelody();
     void diceRhythm();
+    void diceActiveScene(); // Background-focused target randomizer [NEW]
     void resetAccumulator();
     void resetRhythm();
     void triggerDiatonicChordPad (int padIndex);
@@ -91,13 +106,23 @@ public:
     bool hasSceneA = false;
     bool hasSceneB = false;
 
+    // 4x4 Octatrack Scene Memory [NEW]
+    SceneState sceneAPresets[4];
+    SceneState sceneBPresets[4];
+    bool sceneASlotsSaved[4] = { false };
+    bool sceneBSlotsSaved[4] = { false };
+    
+    std::atomic<int> activeSceneAIndex { 0 }; 
+    std::atomic<int> activeSceneBIndex { 0 }; 
+    std::atomic<int> editFocusSide { 0 }; // 0 = A, 1 = B [NEW]
+
     int currentStep = 0;
     int currentBarInCycle = 1;
 
     std::atomic<bool> isCurrentlyPlayingUI { false };
     std::atomic<int> activeChordExtensionType { 0 }; 
 
-    // Modulated values computed in processBlock and used inside GUI thread
+    // Public active values modulated in real-time by the internal LFOs
     float activeMorph = 0.0f;
     float activeRest = 0.1f;
     float activeLegato = 0.5f;
@@ -129,6 +154,7 @@ private:
     
     std::vector<std::pair<int, int>> scheduledNoteOffs;
 
+    // 8 Independent LFO phases
     double lfoPhases[8] = { 0.0 };
 
     double lfoPhaseEntropy = 0.0;

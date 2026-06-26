@@ -24,7 +24,7 @@ struct AppTheme
     static AppTheme get (int index)
     {
         AppTheme t;
-        if (index == 1) // Skyline Eurorack (Light Beige Panel)
+        if (index == 1) // Skyline Eurorack (Beige) [5]
         {
             t.background    = juce::Colour (0xFFE2E0D8);
             t.border        = juce::Colour (0xFFB8B5AB);
@@ -40,8 +40,8 @@ struct AppTheme
         {
             t.background    = juce::Colour (0xFF101010);
             t.border        = juce::Colour (0xFF242424);
-            t.leftAccent    = juce::Colour (0xFFFFFFFF); // Clean White
-            t.rightAccent   = juce::Colour (0xFF88888A); // Mid Grey
+            t.leftAccent    = juce::Colour (0xFFFFFFFF); 
+            t.rightAccent   = juce::Colour (0xFF88888A); 
             t.textDim       = juce::Colour (0xFF66666A);
             t.trackBg       = juce::Colour (0xFF080808);
             t.slotOutline   = juce::Colour (0xFF2D2D32);
@@ -52,7 +52,7 @@ struct AppTheme
         {
             t.background    = juce::Colour (0xFF030A05);
             t.border        = juce::Colour (0xFF112A18);
-            t.leftAccent    = juce::Colour (0xFF33FF33); // Matrix Green
+            t.leftAccent    = juce::Colour (0xFF33FF33); 
             t.rightAccent   = juce::Colour (0xFF22AA22); 
             t.textDim       = juce::Colour (0xFF1E5F2E);
             t.trackBg       = juce::Colour (0xFF020603);
@@ -64,8 +64,8 @@ struct AppTheme
         {
             t.background    = juce::Colour (0xFF16181F);
             t.border        = juce::Colour (0xFF2A2E3D);
-            t.leftAccent    = juce::Colour (0xFF00D2FF); // Cyan
-            t.rightAccent   = juce::Colour (0xFFFFB300); // Amber
+            t.leftAccent    = juce::Colour (0xFF00D2FF); 
+            t.rightAccent   = juce::Colour (0xFFFFB300); 
             t.textDim       = juce::Colour (0xFF55555C);
             t.trackBg       = juce::Colour (0xFF181C24);
             t.slotOutline   = juce::Colour (0xFF242835);
@@ -281,6 +281,50 @@ public:
             float stripeHeight = 2.0f;
             g.fillRect (capX + 2.0f, capY + capHeight * 0.5f - stripeHeight * 0.5f, capWidth - 4.0f, stripeHeight);
         }
+        else if (style == juce::Slider::LinearHorizontal) // Crossfader [5] [NEW]
+        {
+            // Load active theme colors dynamically
+            int themeIdx = static_cast<int> (processor.apvts.getRawParameterValue ("panelTheme")->load());
+            auto t = AppTheme::get (themeIdx);
+
+            auto trackHeight = 4.0f;
+            auto trackY = y + height * 0.5f - trackHeight * 0.5f;
+
+            // Recessed horizontal slot [5]
+            g.setColour (t.trackBg);
+            g.fillRoundedRectangle ((float)x, trackY, (float)width, trackHeight, trackHeight * 0.5f);
+            g.setColour (t.slotOutline);
+            g.drawRoundedRectangle ((float)x, trackY, (float)width, trackHeight, trackHeight * 0.5f, 1.0f);
+
+            // 3D DJ-Style Crossfader Cap [5] [NEW]
+            float capWidth = 28.0f;
+            float capHeight = 16.0f;
+            float capX = sliderPos - capWidth * 0.5f;
+            float capY = y + height * 0.5f - capHeight * 0.5f;
+
+            // Fader shadow
+            g.setColour (juce::Colour (themeIdx == 1 ? 0x15000000 : 0x45000000));
+            g.fillRoundedRectangle (capX + 1.0f, capY + 3.0f, capWidth, capHeight, 2.0f);
+
+            // Tactile Rubberized Cap Body
+            juce::Colour capBaseCol = t.faderCap;
+            juce::ColourGradient capGrad (capBaseCol.brighter (0.1f), capX, capY,
+                                         capBaseCol.darker (0.2f), capX, capY + capHeight, false);
+            g.setGradientFill (capGrad);
+            g.fillRoundedRectangle (capX, capY, capWidth, capHeight, 2.0f);
+
+            // Borders
+            g.setColour (juce::Colour (0xFF3A3F4E));
+            g.drawRoundedRectangle (capX, capY, capWidth, capHeight, 2.0f, 1.0f);
+
+            // Vertical high-contrast indicator stripe [5] [NEW]
+            // Morph Color-Coding: dynamically blends between Cyan and Amber based on fader pos
+            float blendVal = (sliderPos - minSliderPos) / (maxSliderPos - minSliderPos);
+            juce::Colour indicatorCol = t.leftAccent.interpolatedWith (t.rightAccent, blendVal);
+            g.setColour (indicatorCol);
+            float stripeWidth = 2.0f;
+            g.fillRect (capX + capWidth * 0.5f - stripeWidth * 0.5f, capY + 2.0f, stripeWidth, capHeight - 4.0f);
+        }
         else
         {
             juce::LookAndFeel_V4::drawLinearSlider (g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
@@ -311,7 +355,7 @@ public:
         int themeIdx = static_cast<int> (processor.apvts.getRawParameterValue ("panelTheme")->load());
         auto t = AppTheme::get (themeIdx);
 
-        // Keep OLED screen background dark and professional even on light beige panels! [NEW]
+        // Keep OLED screen background dark and professional even on light beige panels!
         g.fillAll (t.background.darker (0.9f)); 
         g.setColour (t.border); 
         g.drawRect (getLocalBounds().toFloat(), 2.0f);
@@ -368,7 +412,7 @@ public:
             {
                 if (i == 0)      g.setColour (juce::Colour (0xFF4CFF4C)); // Beat 1: Green
                 else if (i == 4) g.setColour (juce::Colour (0xFFFF4C4C)); // Beat 5: Red
-                else             g.setColour (t.leftAccent); // Matches the current theme's primary left accent [NEW]
+                else             g.setColour (t.leftAccent); // Matches the current theme's primary left accent
                 g.fillRect (bar.expanded(1, 1));
             }
             else
@@ -406,7 +450,7 @@ private:
 // ==============================================================================
 class PluginEditor : public juce::AudioProcessorEditor, 
                      public juce::Timer,
-                     public juce::AudioProcessorValueTreeState::Listener // Inherit from Parameter Listener [3] [NEW]
+                     public juce::AudioProcessorValueTreeState::Listener // Inherit from Parameter Listener [3]
 {
 public:
     PluginEditor (PluginProcessor&);
@@ -417,8 +461,9 @@ public:
     void timerCallback() override;
 
     void mouseDown (const juce::MouseEvent& event) override;
+    void mouseUp (const juce::MouseEvent& event) override;
 
-    // Trigger instant GUI repaint when active theme parameter is changed [3] [NEW]
+    // Trigger instant GUI repaint when active theme parameter is changed [3]
     void parameterChanged (const juce::String& parameterID, float newValue) override;
 
 private:
@@ -441,15 +486,27 @@ private:
     juce::TextButton chordModeButton;
     juce::TextButton diceMelodyButton;
     juce::TextButton diceRhythmButton;
-    juce::TextButton sceneAButton;
-    juce::TextButton sceneBButton;
-    juce::TextButton presetButtons[8];
+    
+    // Octatrack Scene Buttons [5] [NEW]
+    juce::TextButton sceneAButtons[4];
+    juce::TextButton sceneBButtons[4];
+    juce::TextButton diceSceneAButton;
+    juce::TextButton diceSceneBButton;
+
+    juce::TextButton saveButton;
+    juce::TextButton recallButton;
 
     juce::ComboBox rootKeyBox;
     juce::ComboBox scaleTypeBox;
     juce::ComboBox cycleLengthBox;
 
-    int presetPressStartTime[8] = { 0 };
+    // Symmetrical time trackers for hold-to-save logic [5] [NEW]
+    uint32_t sceneAPressStartTime[4] = { 0 };
+    uint32_t sceneBPressStartTime[4] = { 0 };
+
+    // Flash counters for visual confirm [5] [NEW]
+    int sceneAFlashTimer[4] = { 0 };
+    int sceneBFlashTimer[4] = { 0 };
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fader1Attachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fader2Attachment;
@@ -478,7 +535,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> scaleTypeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> cycleLengthAttachment;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
+    JU_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };
 
 #endif // NAVY_ARP_EDITOR_H
