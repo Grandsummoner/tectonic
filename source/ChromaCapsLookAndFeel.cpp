@@ -17,7 +17,24 @@ void ChromaCapsLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton&
     auto& lf = button.getLookAndFeel();
     g.setFont (lf.getTextButtonFont (button, button.getHeight()));
     
-    g.setColour (button.findColour (juce::TextButton::textColourOffId).withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
+    // Check if this is the active scene A or B button to make text highly readable
+    const bool isButtonA = (button.getButtonText() == "A");
+    const bool isButtonB = (button.getButtonText() == "B");
+    
+    if (isButtonA || isButtonB)
+    {
+        const bool isSceneB = processor.isSceneBActive();
+        const bool isActiveAnchor = (isButtonA && !isSceneB) || (isButtonB && isSceneB);
+        
+        if (isActiveAnchor)
+            g.setColour (juce::Colours::black); // High contrast dark text over active color
+        else
+            g.setColour (juce::Colours::white.withAlpha (0.7f));
+    }
+    else
+    {
+        g.setColour (button.findColour (juce::TextButton::textColourOffId).withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
+    }
     
     const int indent = 2;
     g.drawFittedText (button.getButtonText(), 
@@ -31,8 +48,28 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
 {
     auto bounds = button.getLocalBounds().toFloat();
     const float cornerSize = 4.0f;
-
     auto baseColour = backgroundColour;
+
+    const bool isButtonA = (button.getButtonText() == "A");
+    const bool isButtonB = (button.getButtonText() == "B");
+
+    // Dynamic scene selection coloring
+    if (isButtonA || isButtonB)
+    {
+        const bool isSceneB = processor.isSceneBActive();
+        const bool isActiveAnchor = (isButtonA && !isSceneB) || (isButtonB && isSceneB);
+
+        if (isActiveAnchor)
+        {
+            // Ice Blue/Cyan highlight color for the active anchor
+            baseColour = juce::Colour (0xFF00D2FF); 
+        }
+        else
+        {
+            // Inactive slate color
+            baseColour = juce::Colour (0xFF2A2D36);
+        }
+    }
 
     if (shouldDrawButtonAsDown)
         baseColour = baseColour.darker (0.2f);
@@ -65,11 +102,10 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float trackWidth = 6.0f;
         const float trackX = static_cast<float>(x) + (static_cast<float>(width) - trackWidth) * 0.5f;
         
-        // Background track slot (recessed dark shadow)
+        // Background track slot
         g.setColour (juce::Colours::black.withAlpha (0.4f));
         g.fillRoundedRectangle (trackX, static_cast<float>(y), trackWidth, static_cast<float>(height), 3.0f);
         
-        // Inner 3D bevel highlighting (dark top/left shadow, light bottom/right highlight)
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.drawVerticalLine (static_cast<int>(trackX), static_cast<float>(y), static_cast<float>(y + height));
         
@@ -82,12 +118,10 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float thumbX = static_cast<float>(x) + (static_cast<float>(width) - thumbWidth) * 0.5f;
         const float thumbY = sliderPos - (thumbHeight * 0.5f);
 
-        // Cap Background
         const juce::Colour capColour = slider.findColour (juce::Slider::thumbColourId);
         g.setColour (capColour);
         g.fillRoundedRectangle (thumbX, thumbY, thumbWidth, thumbHeight, 2.0f);
 
-        // Center indicator line
         g.setColour (juce::Colours::white);
         g.fillRect (thumbX + 2.0f, thumbY + (thumbHeight * 0.5f) - 1.0f, thumbWidth - 4.0f, 2.0f);
     }

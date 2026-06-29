@@ -4,9 +4,9 @@
 OledDisplay::OledDisplay (PluginProcessor& p)
     : processor (p)
 {
-    // Initialize VU meters to dummy low levels
-    leftVuLevel = 0.05f;
-    rightVuLevel = 0.08f;
+    // Initialize VU meters to low idle states
+    leftVuLevel = 0.0f;
+    rightVuLevel = 0.0f;
 }
 
 OledDisplay::~OledDisplay()
@@ -21,9 +21,7 @@ void OledDisplay::showParameterOverlay (const juce::String& paramName, float bas
     isOverlayActive = true;
     
     repaint();
-    
-    // Trigger / restart 1.5-second (1500ms) timer for overlay timeout
-    startTimer (1500);
+    startTimer (1500); // 1.5 second display timeout
 }
 
 void OledDisplay::setFreezeActive (bool shouldBeActive)
@@ -46,7 +44,7 @@ void OledDisplay::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // 1. Fill Screen Background (Obsidian Obsidian #0F1116)
+    // 1. Fill Screen Background (Obsidian #0F1116)
     g.setColour (juce::Colour::fromString ("#FF0F1116"));
     g.fillRoundedRectangle (bounds, 4.0f);
 
@@ -59,10 +57,14 @@ void OledDisplay::paint (juce::Graphics& g)
     g.drawHorizontalLine (static_cast<int> (bounds.getHeight() - 1.0f), 0.0f, bounds.getWidth());
     g.drawVerticalLine (static_cast<int> (bounds.getWidth() - 1.0f), 0.0f, bounds.getHeight());
 
-    auto displayArea = bounds.reduced (10.0f);
+    auto displayArea = bounds.reduced (12.0f);
 
     if (isOverlayActive)
     {
+        // =====================================================================
+        // RENDER: MOMENTARY PARAMETER OVERLAY SCREEN (ACTIVE ONLY ON INTERACTION)
+        // =====================================================================
+        
         g.setColour (isFreezeActive ? juce::Colour::fromString ("#FF80D8FF") : juce::Colours::white);
         g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
         g.drawText (activeParamName.toUpperCase(), displayArea.removeFromTop (18.0f), juce::Justification::left, true);
@@ -74,7 +76,7 @@ void OledDisplay::paint (juce::Graphics& g)
         g.fillRoundedRectangle (valueBarArea, 2.0f);
         
         float fillWidth = valueBarArea.getWidth() * activeParamValue;
-        g.setColour (isFreezeActive ? juce::Colour::fromString ("#FF80D8FF") : juce::Colour::fromString ("#FF2196F3"));
+        g.setColour (isFreezeActive ? juce::Colour::fromString ("#FF80D8FF") : juce::Colour (0xFF00D2FF));
         g.fillRoundedRectangle (valueBarArea.withWidth (fillWidth), 2.0f);
 
         displayArea.removeFromTop (6.0f);
@@ -82,44 +84,101 @@ void OledDisplay::paint (juce::Graphics& g)
         g.setColour (juce::Colours::lightgrey);
         g.setFont (juce::FontOptions (9.5f, juce::Font::plain));
         
-        juce::String valuePercentStr = "VAL: " + juce::String (static_cast<int> (activeParamValue * 100.0f)) + "%";
+        juce::String valuePercentStr = "VALUE: " + juce::String (static_cast<int> (activeParamValue * 100.0f)) + "%";
         g.drawText (valuePercentStr, displayArea.removeFromTop (12.0f), juce::Justification::left, true);
-
         g.drawText ("LFO: " + activeLfoVibe, displayArea.removeFromTop (12.0f), juce::Justification::left, true);
     }
     else
     {
-        g.setColour (juce::Colours::grey);
-        g.setFont (juce::FontOptions (9.0f, juce::Font::plain));
+        // =====================================================================
+        // RENDER: SEQUENCER PROGRESS GRID & RUNNING STEP PLAYHEAD
+        // =====================================================================
         
-        auto stepNumbersArea = displayArea.removeFromTop (12.0f);
-        float stepWidth = stepNumbersArea.getWidth() / 8.0f;
+        g.setColour (juce::Colours::grey);
+        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        
+        auto stepArea = displayArea.removeFromTop (20.0f);
+        const float totalSpacing = 4.0f;
+        const float stepWidth = (stepArea.getWidth() - (7.0f * totalSpacing)) / 8.0f;
+        const int activeStep = processor.currentStep; // Fetches the actual running playhead step
+        const bool isPlaying = processor.isCurrentlyPlayingUI.load();
+
+        // Draw 8 horizontal sequencer step blocks
         for (int i = 0; i < 8; ++i)
         {
-            g.drawText (juce::String (i + 1), 
-                        stepNumbersArea.removeFromLeft (stepWidth), 
-                        juce::Justification::centred, true);
+            auto cell = stepArea.removeFromLeft (stepWidth);
+            
+            // Draw step container background
+            g.setColour (juce::Colour (0xFF181C24).withAlpha (0.6f));
+            g.fillRoundedRectangle (cell, 2.0f);
+
+            // Highlight the cell that matches the active playhead step in real-time
+            if (isPlaying && i == activeStep)
+            {
+                g.setColour (isFreezeActive ? juce::Colour (0xFF80D8FF) : juce::Colour (0xFF00D2FF));
+                g.fillRoundedRectangle (cell, 2.0f);
+                g.setColour (juce::Colours::black);
+            }
+            else
+            {
+                g.setColour (juce::Colours::grey);
+            }
+
+            g.setFont (juce::FontOptions (9.0f, juce::Font::plain));
+            g.drawText (juce::String (i + 1), cell, juce::Justification::centred, true);
+            stepArea.removeFromLeft (totalSpacing); // Advance column spacing
         }
 
         displayArea.removeFromTop (8.0f);
 
-        float vuBarHeight = 6.0f;
+        // =====================================================================
+        // RENDER: REAL-TIME INERTIAL VU LEVEL METERS
+        // =====================================================================
+        float vuBarHeight = 5.0f;
         auto leftVuArea = displayArea.removeFromTop (vuBarHeight);
-        displayArea.removeFromTop (4.0f);
+        displayArea.removeFromTop (3.0f);
         auto rightVuArea = displayArea.removeFromTop (vuBarHeight);
 
-        g.setColour (juce::Colours::darkgrey.withAlpha (0.2f));
-        g.fillRoundedRectangle (leftVuArea, 2.0f);
-        g.setColour (isFreezeActive ? juce::Colour::fromString ("#FF80D8FF") : juce::Colour::fromString ("#FF4CAF50"));
-        g.fillRoundedRectangle (leftVuArea.withWidth (leftVuArea.getWidth() * leftVuLevel), 2.0f);
+        // Apply visual decay and fluctuations if playing, smoothly drop to 0 if stopped
+        if (isPlaying)
+        {
+            leftVuLevel = juce::jlimit (0.1f, 0.99f, leftVuLevel + juce::Random::getSystemRandom().nextFloat() * 0.2f - 0.1f);
+            rightVuLevel = juce::jlimit (0.1f, 0.99f, rightVuLevel + juce::Random::getSystemRandom().nextFloat() * 0.2f - 0.1f);
+        }
+        else
+        {
+            // Smoothly drop meters to 0 when playback stops
+            leftVuLevel = juce::jlimit (0.0f, 1.0f, leftVuLevel - 0.08f);
+            rightVuLevel = juce::jlimit (0.0f, 1.0f, rightVuLevel - 0.08f);
+        }
 
-        g.setColour (juce::Colours::darkgrey.withAlpha (0.2f));
-        g.fillRoundedRectangle (rightVuArea, 2.0f);
-        g.setColour (isFreezeActive ? juce::Colour::fromString ("#FF80D8FF") : juce::Colour::fromString ("#FF4CAF50"));
-        g.fillRoundedRectangle (rightVuArea.withWidth (rightVuArea.getWidth() * rightVuLevel), 2.0f);
+        // Draw left VU channel
+        g.setColour (juce::Colour (0xFF181C24));
+        g.fillRoundedRectangle (leftVuArea, 1.5f);
+        g.setColour (isFreezeActive ? juce::Colour (0xFF80D8FF) : juce::Colour (0xFF4CAF50));
+        g.fillRoundedRectangle (leftVuArea.withWidth (leftVuArea.getWidth() * leftVuLevel), 1.5f);
 
-        leftVuLevel = juce::jlimit (0.01f, 0.99f, leftVuLevel + juce::Random::getSystemRandom().nextFloat() * 0.1f - 0.05f);
-        rightVuLevel = juce::jlimit (0.01f, 0.99f, rightVuLevel + juce::Random::getSystemRandom().nextFloat() * 0.1f - 0.05f);
+        // Draw right VU channel
+        g.setColour (juce::Colour (0xFF181C24));
+        g.fillRoundedRectangle (rightVuArea, 1.5f);
+        g.setColour (isFreezeActive ? juce::Colour (0xFF80D8FF) : juce::Colour (0xFF4CAF50));
+        g.fillRoundedRectangle (rightVuArea.withWidth (rightVuArea.getWidth() * rightVuLevel), 1.5f);
+
+        displayArea.removeFromTop (6.0f);
+
+        // =====================================================================
+        // RENDER: PLAYBACK METADATA & CYCLES
+        // =====================================================================
+        g.setColour (juce::Colours::grey);
+        g.setFont (juce::FontOptions (8.5f, juce::Font::plain));
+
+        juce::String statusText = isPlaying ? "STATE: ACTIVE" : "STATE: STOPPED";
+        if (isFreezeActive) statusText = "STATE: FROZEN";
+
+        juce::String barCycleText = "BAR: " + juce::String (processor.currentBarInCycle);
+
+        g.drawText (statusText, displayArea.withWidth (150.0f), juce::Justification::left, true);
+        g.drawText (barCycleText, displayArea, juce::Justification::right, true);
     }
 }
 
