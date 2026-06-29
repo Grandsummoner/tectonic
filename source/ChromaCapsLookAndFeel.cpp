@@ -17,17 +17,16 @@ void ChromaCapsLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton&
     auto& lf = button.getLookAndFeel();
     g.setFont (lf.getTextButtonFont (button, button.getHeight()));
     
-    // Check if this is the active scene A or B button to make text highly readable
     const bool isButtonA = (button.getButtonText() == "A");
     const bool isButtonB = (button.getButtonText() == "B");
     
     if (isButtonA || isButtonB)
     {
-        const bool isSceneB = processor.isSceneBActive();
+        const bool isSceneB = processor.isSceneBActiveAnchor.load();
         const bool isActiveAnchor = (isButtonA && !isSceneB) || (isButtonB && isSceneB);
         
         if (isActiveAnchor)
-            g.setColour (juce::Colours::black); // High contrast dark text over active color
+            g.setColour (juce::Colours::black); 
         else
             g.setColour (juce::Colours::white.withAlpha (0.7f));
     }
@@ -53,21 +52,18 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
     const bool isButtonA = (button.getButtonText() == "A");
     const bool isButtonB = (button.getButtonText() == "B");
 
-    // Dynamic scene selection coloring
     if (isButtonA || isButtonB)
     {
-        const bool isSceneB = processor.isSceneBActive();
+        const bool isSceneB = processor.isSceneBActiveAnchor.load();
         const bool isActiveAnchor = (isButtonA && !isSceneB) || (isButtonB && isSceneB);
 
         if (isActiveAnchor)
         {
-            // Ice Blue/Cyan highlight color for the active anchor
-            baseColour = juce::Colour (0xFF00D2FF); 
+            baseColour = juce::Colour (0xFF00D2FF); // Active anchor highlighted in Cyan
         }
         else
         {
-            // Inactive slate color
-            baseColour = juce::Colour (0xFF2A2D36);
+            baseColour = juce::Colour (0xFF2A2D36); // Inactive dark background
         }
     }
 
@@ -102,7 +98,6 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float trackWidth = 6.0f;
         const float trackX = static_cast<float>(x) + (static_cast<float>(width) - trackWidth) * 0.5f;
         
-        // Background track slot
         g.setColour (juce::Colours::black.withAlpha (0.4f));
         g.fillRoundedRectangle (trackX, static_cast<float>(y), trackWidth, static_cast<float>(height), 3.0f);
         
@@ -112,7 +107,7 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         g.setColour (juce::Colours::white.withAlpha (0.1f));
         g.drawVerticalLine (static_cast<int>(trackX + trackWidth), static_cast<float>(y), static_cast<float>(y + height));
 
-        // Draw thumb / fader cap handle
+        // Draw fader cap handle
         const float thumbHeight = 16.0f;
         const float thumbWidth = 24.0f;
         const float thumbX = static_cast<float>(x) + (static_cast<float>(width) - thumbWidth) * 0.5f;

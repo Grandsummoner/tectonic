@@ -112,7 +112,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     //==============================================================================
-    // Generative Engine & Preset Utilities
+    // Generative Engine & Preset Utilities (PUBLIC for Editor / Display Access)
     //==============================================================================
     void scheduleNoteOff (juce::MidiBuffer& midi, int pitch, int delaySamples);
     void setActiveAnchor (bool useSceneB);
@@ -171,9 +171,16 @@ public:
     bool hasSceneA { false };
     bool hasSceneB { false };
 
+    // Public sequencer position tracking accessed by OLED display
+    int currentStep = 0;
+    int currentBarInCycle = 1;
+
     std::atomic<int> activePresetIndex { 0 };
     std::atomic<bool> isSceneBActiveAnchor { false };
     std::atomic<bool> isCurrentlyPlayingUI { false };
+
+    bool isSceneBActive() const { return isSceneBActiveAnchor.load(); }
+    void setSceneBActive (bool shouldBeB) { isSceneBActiveAnchor.store (shouldBeB); }
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -186,7 +193,6 @@ private:
     int mLastNotePlayed = -1;
     int mNoteOffTime = 0;
     int mTimeInSamples = 0;
-    int currentStep = 0;
 
     std::vector<int> activeHeldNotes;
     std::vector<int> latchedNotes;
@@ -201,7 +207,6 @@ private:
     float currentSlewTarget[24] { 0.5f };
 
     double mSongPositionPPQ = 0.0;
-    int currentBarInCycle = 1;
 
     // Modulator States
     float activeMorph = 0.0f;
