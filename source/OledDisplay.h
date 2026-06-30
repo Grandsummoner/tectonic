@@ -25,6 +25,7 @@ private:
 
     PluginProcessor& processor;
 
+    // Active screen visual state indicators
     bool isOverlayActive = false;
     bool isFreezeActive = false;
 

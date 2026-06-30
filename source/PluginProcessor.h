@@ -124,7 +124,7 @@ public:
     void loadPreset (int slotIndex);
     void captureScene (int side);
 
-    // Reconstructed Inline Helpers (Updated to clear UI sliders visually)
+    // Reconstructed Inline Helpers accessed by PluginEditor
     void clearSceneA()
     {
         sceneA = SceneState();

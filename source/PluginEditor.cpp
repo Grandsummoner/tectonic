@@ -124,7 +124,8 @@ PluginEditor::PluginEditor (PluginProcessor& p)
 
     updateSliderTextBoxThemeColors();
 
-    setResizable (true, true); setResizeLimits (700, 460, 1400, 920); setSize (850, 560); startTimerHz (30);
+    // Sinks minimum height to 530px to force DAW wraps to reveal all rotary textboxes and knobs at launch!
+    setResizable (true, true); setResizeLimits (700, 530, 1400, 920); setSize (850, 560); startTimerHz (30);
 }
 
 PluginEditor::~PluginEditor() 
@@ -164,7 +165,7 @@ void PluginEditor::mouseDown (const juce::MouseEvent& event)
     for (int i = 0; i < 8; ++i) {
         if (event.eventComponent == &presetButtons[i]) {
             if (initButton.getToggleState()) {
-                // INIT + PRESET SLOT [1-8]: Resets that preset's data buffers
+                // INIT + PRESET SLOT [1-8]: Completely resets that preset slot back to default
                 processor.presetSlotsSaved[i] = false;
                 processor.presets[i] = SceneState();
                 presetFlashTimer[i] = 24;
@@ -278,8 +279,8 @@ void PluginEditor::timerCallback()
     static bool lastAnchorB = false; bool currentAnchorB = processor.isSceneBActiveAnchor.load();
     if (currentAnchorB != lastAnchorB) { 
         lastAnchorB = currentAnchorB; 
-        sceneAFlashTimer = 24; 
-        sceneBFlashTimer = 24; 
+        sceneAFlashTimer = 24; // Trigger active anchor flash on selection!
+        sceneBFlashTimer = 24;
         sceneAButton.repaint(); 
         sceneBButton.repaint(); 
     }
@@ -357,6 +358,9 @@ void PluginEditor::timerCallback()
             initAlreadySaved = true; initFlashTimer = 24; initButton.setToggleState (false, juce::dontSendNotification); initButton.repaint();
         }
     }
+
+    // Force OLED monitor repaints at 30Hz to render real-time flashing playhead LED levels
+    oledDisplay.repaint();
 }
 
 void PluginEditor::updateSliderTextBoxThemeColors()
