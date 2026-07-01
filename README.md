@@ -1,62 +1,45 @@
-# navy-arp
+# Navy Arp
 
-`navy-arp` is a modern, performative generative MIDI arpeggiator and step sequencer built with C++ and the JUCE 8 framework. 
-
-Unlike traditional arpeggiators that rely on tedious grid drawing or tracker-style tables, `navy-arp` is designed as a hands-on, modular-inspired performance utility. It combines scale-quantized note probability with a real-time parameter-morphing crossfader, making it highly expressive and optimized for immediate MIDI controller mapping.
+Navy Arp is a generative MIDI arpeggiator and algorithmic step sequencer built with the JUCE 7/8 framework in modern C++20. Drawing inspiration from classic hardware modular setups, the plugin acts as a sound-generating synth (instrument) designed to load stably across mainstream Windows DAWs.
 
 ---
 
 ## Key Features
 
-### 1. The Core Brain (Scale-Degree Probability)
-*   **8 Scale-Degree Faders:** Instead of chromatic notes, the faders represent musical scale degrees (1st through 8th notes of your chosen key/scale). This ensures that every fader is always musically active with zero dead space.
-*   **Dynamic Note Reader:** Visual fader labels automatically update in real-time to show the exact musical notes of your selected key (e.g., C, Eb, G).
-*   **Ghost Glow Overlay:** When notes are played on your MIDI keyboard, a smooth visual glow fades in behind the active fader tracks, indicating which notes are currently being held.
+### 1. Decoupled Morph Crossfader & Scene Focus
+* **Audio Engine**: The lock-free audio thread interpolates directly between private scene snapshots (`sceneA` and `sceneB`) in real-time based on the physical position of the morph crossfader.
+* **Editing Lens**: The screen sliders and knobs serve as the active editing lens for the selected scene anchor. 
+* **Focus Selection**: A long press (1000ms) on **A** or **B** swaps the active editing focus atomically and snaps the screen sliders to the selected scene's static values without affecting the ongoing crossfaded audio.
 
-### 2. Symmetrical Sidebar Modules
-*   **Rhythm Module (Left):**
-    *   **Rhythm Morph:** A single knob that morphs your groove from a straight, steady 1/16th pulse to a highly syncopated, stochastic shifting clock (including triplets and dotted notes).
-    *   **Rest & Legato:** Fine-tune step mute probability and note gate lengths on the fly.
-    *   **Latch Mode:** Lock your chord memory so the sequencer loops endlessly, allowing for fully hands-free performance.
-*   **Harmony & Chaos Module (Right):**
-    *   **Entropy:** Introduces a gradual "tape wear" loop decay that slowly mutates your sequence over time.
-    *   **Harmony:** A stochastic polyphony control that dynamically adds random, scale-correct 2-to-3-note chords and pad layers on top of your melody.
-    *   **Chaos:** Controls pitch drift, randomly shifting active notes up or down an octave.
-    *   **DICE MELODY & DICE RHYTHM:** Dedicated momentary randomizer buttons to instantly generate fresh patterns within your probability limits.
+### 2. Symmetrical Tactile Modifiers & Instant Latching
+* **Utility & Dice Grids**: Features unified dark-charcoal 2x2 grids for both modifiers (`Save`, `Recall`, `Copy`, `Init`) and dicing engines (`Melo`, `Arti`, `Time`, `Navy`).
+* **Instant Saving & Copying**: Saving presets is instant. The `Copy` modifier handles both Scene copying (`A` to `B` / `B` to `A`) and tactile Source-to-Destination preset slot copying.
+* **3-Blink Flashing Feedback**: Triggers rapid, hardware-style 3-blink flashing sequences (Save/Init blinks red-orange, Recall blinks cyan) for positive action confirmation.
+* **Deep Scene Clears**: Triggering `Init` on an active scene resets its parameters and instantly snaps your GUI sliders and dials back to their flat defaults.
 
-### 3. High-Quality OLED display (Center)
-*   Designed to mimic premium boutique hardware displays.
-*   **Active Step Playhead:** Vertical bars representing the active steps pulse instantly on note-triggers with sharp, retro neon-bloom edges, decaying cleanly back to absolute black (`#000000`).
-*   **Interactive Keyboard Brackets:** Two draggable bracket handles display the Lowest Note and Highest Note boundaries of your active pitch zone.
-
-### 4. Scene Morphing (The Octatrack Crossfader)
-*   A master horizontal crossfader that smoothly interpolates every slider, knob, and probability state between a custom **Scene A** (cyan glow) and **Scene B** (amber glow).
-*   Moving the crossfader glides and rotates all on-screen sliders and knobs in real-time, allowing for dramatic, sweeping transitions with zero abrupt parameter jumps.
-
-### 5. OLED Preset Slots
-*   **8 Tactile Recall Slots:** Clicking a numbered block instantly recalls that preset.
-*   **Hold-to-Save:** Holding down a slot button for **2.0 seconds** writes your current settings to that memory slot, triggering a sharp neon-blue outer-edge glow indicating the slot contains saved data.
+### 3. High-Fidelity Skyline Eurorack Aesthetics
+* **Beige Color Palette**: Modeled after clean Eurorack aluminum modular faceplates, featuring a warm beige background with high-contrast anthracite borders.
+* **Tactile Pointers**: Rotary knobs are styled with dark faces and vibrant red-orange dial value rings. 
+* **Legible Textboxes**: Rotary textboxes automatically adapt to use bold black text on clean light-grey backgrounds, ensuring clear contrast.
+* **OLED Step-Level Monitor**: A wide centerpiece OLED viewport that draws 8 tall, vertical segmented LED level columns displaying step fader probabilities and a real-time playhead play tracker.
 
 ---
 
-## How to Compile (Cloud CI/CD Pipeline)
+## Directory Structure
 
-`navy-arp` is built on top of the modern **Pamplejuce** CMake template. You do not need to install local compilers or IDEs to build it.
-
-1.  Commit and Push any code changes to your repository.
-2.  GitHub Actions will automatically spin up virtual Windows environments in the cloud.
-3.  Once the build is complete (approx. 2 minutes), go to your **Actions** tab on GitHub.
-4.  Scroll to the **Artifacts** section at the bottom of the completed build to download your ready-to-run **VST3 installer (.exe)**.
-
----
-
-## DAW Setup & MIDI Routing (Ableton Live)
-
-`navy-arp` is compiled as a VST3 Instrument to allow stable multi-track routing in Ableton Live on Windows:
-
-1.  Create a MIDI Track (**`2-MIDI`**) and load **Pamplejuce Demo** (navy-arp) onto it.
-2.  Create your software synthesizer track (**`1-Analog Piano`** or any other virtual instrument).
-3.  On your synthesizer track, set the **MIDI From** dropdown list to **`2-MIDI`**.
-4.  Directly below that, change the second dropdown list from `Post FX` to **`Pamplejuce Demo`**.
-5.  Set the **Monitor** on your synthesizer track to **`In`** (orange).
-6.  Select your `2-MIDI` track, hold down a chord on your keyboard, and enjoy your generative arpeggiations!
+```text
+navy-arp/
+├── modules/
+│   └── clap-juce-extensions/          # CLAP wrapper target modules
+├── source/
+│   ├── AppTheme.h                     # Centralized color palettes and theme indexes
+│   ├── OledDisplay.h                  # OLED centerpiece declarations
+│   ├── OledDisplay.cpp                # Segmented fader LED ladders & live metadata bar
+│   ├── ChromaCapsLookAndFeel.h        # LookAndFeel declarations
+│   ├── ChromaCapsLookAndFeel.cpp      # Slider tracks, cap indicators, & toggles
+│   ├── PluginProcessor.h              # Audio engine & scene registers
+│   ├── PluginProcessor.cpp            # Generative arpeggiator clock & MIDI process
+│   ├── PluginEditor.h                 # Parent UI declarations & attachments
+│   └── PluginEditor.cpp               # Layout boundaries, listeners, & timers
+├── CMakeLists.txt                     # Core build script
+└── README.md                          # Documentation
