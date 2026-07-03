@@ -315,7 +315,7 @@ void OledDisplay::paint (juce::Graphics& g)
             }
         }
 
-        // 2. Draw active glowing star nodes, modulated in vertical waves by the 8 LFOs! [43]
+        // Draw active glowing star nodes, modulated in vertical waves by the 8 LFOs! [43]
         if (state != nullptr)
         {
             for (size_t i = 0; i < projectedPoints.size(); ++i)
@@ -499,17 +499,7 @@ void OledDisplay::paint (juce::Graphics& g)
 
         displayArea.removeFromTop (3.0f);
 
-        // Fetch scale, root key, voice, rates, and octaves choices dynamically from the APVTS parameters
-        // Reused rateIdx safely from the top declaration to prevent multiple redefinition crashes [43]
-        rateIdx = juce::jlimit (0, 3, static_cast<int> (*processor.apvts.getRawParameterValue (IDs::rate.getParamID())));
-        juce::StringArray rates { "1/4", "1/8", "1/16", "1/32" };
-        juce::String rateStr = rates[rateIdx];
-
-        int rangeShift = static_cast<int> (*processor.apvts.getRawParameterValue (IDs::octaves.getParamID()));
-        juce::String octStr = (rangeShift >= 0 ? "+" : "") + juce::String (rangeShift);
-
-        juce::String metaText = "KEY: " + keyStr + " | SCALE: " + scaleStr + " | VOICE: " + voiceStr + " | RATE: " + rateStr + " | OCT: " + octStr;
-        
+        // Draw pre-calculated metadata directly [43]
         g.setColour (juce::Colour (0xFFFFB300)); // Gold/Yellow metadata font
         g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
         g.drawText (metaText, displayArea.removeFromTop (12.0f), juce::Justification::centred, true);
