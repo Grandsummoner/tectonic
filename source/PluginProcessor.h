@@ -34,6 +34,10 @@ namespace IDs
     inline const juce::ParameterID octaves             { "octaves", 1 };
     inline const juce::ParameterID panelTheme          { "panelTheme", 1 };
 
+    // NEW: Master Parameter IDs [1.1.8]
+    inline const juce::ParameterID masterVelocity     { "masterVelocity", 1 };
+    inline const juce::ParameterID masterSwing        { "masterSwing", 1 };
+
     inline const juce::ParameterID rhythmMorphLfoRate  { "rhythmMorphLfoRate", 1 };
     inline const juce::ParameterID rhythmMorphLfoDepth { "rhythmMorphLfoDepth", 1 };
     inline const juce::ParameterID restLfoRate         { "restLfoRate", 1 };
@@ -124,7 +128,6 @@ public:
     void loadPreset (int slotIndex);
     void captureScene (int side);
 
-    // Reconstructed Inline Helpers accessed by PluginEditor
     void clearSceneA()
     {
         sceneA = SceneState();
@@ -199,7 +202,6 @@ public:
     bool hasSceneA { false };
     bool hasSceneB { false };
 
-    // Public sequencer position tracking accessed by UI thread (Atomically Thread-Safe) [43]
     std::atomic<int> currentStep { 0 };
     std::atomic<int> currentBarInCycle { 1 };
 
@@ -215,10 +217,9 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    // Thread-safe deferred preset exchange flag [43]
     std::atomic<int> pendingPresetToLoad { -1 };
 
-    // Pre-Cached Parameter Pointers to avoid hashing on the Audio Thread [43]
+    // Pre-Cached Parameter Pointers to avoid hashing on the Audio Thread
     std::atomic<float>* faderPtrs[8] { nullptr };
     std::atomic<float>* rhythmMorphPtr { nullptr };
     std::atomic<float>* restPtr { nullptr };
@@ -236,14 +237,17 @@ public:
     std::atomic<float>* cycleLengthPtr { nullptr };
     std::atomic<float>* ratePtr { nullptr };
     std::atomic<float>* octavesPtr { nullptr };
+
+    // NEW: Master Parameter cached atomic pointers [43]
+    std::atomic<float>* masterVelocityPtr { nullptr };
+    std::atomic<float>* masterSwingPtr { nullptr };
+
     std::atomic<float>* lfoRatePtrs[8] { nullptr };
     std::atomic<float>* lfoDepthPtrs[8] { nullptr };
 
-    // Moved to public section to allow ChromaCapsLookAndFeel to read LFO phases in real-time [43]
     double lfoPhases[8] { 0.0 };
 
 private:
-    //==============================================================================
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     double mSampleRate = 44100.0;

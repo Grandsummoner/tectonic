@@ -38,6 +38,10 @@ public:
     juce::Slider entropyKnob, harmonyKnob, chaosKnob, octavesKnob;
     juce::Label entropyTitle, harmonyTitle, chaosTitle, octavesTitle;
 
+    // NEW: Repurposed Master Knobs [1.1.8]
+    juce::Slider masterVelocityKnob, masterSwingKnob;
+    juce::Label masterVelocityTitle, masterSwingTitle;
+
     juce::Slider morphCrossfader;
 
     // Performance Mode Modifiers
@@ -70,13 +74,19 @@ public:
 
 private:
     void timerCallback() override;
-    void updateSliderTextBoxThemeColors(); // Declared utility helper
+    void updateSliderTextBoxThemeColors(); 
+
+    // NEW: Background Image Container [1.1.8]
+    juce::Image backgroundImage;
 
     // Slide Attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> fader1Attachment, fader2Attachment, fader3Attachment, fader4Attachment, fader5Attachment, fader6Attachment, fader7Attachment, fader8Attachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> rhythmMorphAttachment, restAttachment, legatoAttachment, rateAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> entropyAttachment, harmonyAttachment, chaosAttachment, octavesAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
+
+    // NEW: Master slide attachments [1.1.8]
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterVelocityAttachment, masterSwingAttachment;
 
     // Toggle Attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> latchAttachment, arpSeqAttachment, polyAttachment, freezeAttachment;

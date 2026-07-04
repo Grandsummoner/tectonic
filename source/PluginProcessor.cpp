@@ -36,6 +36,10 @@ PluginProcessor::PluginProcessor()
     ratePtr        = apvts.getRawParameterValue (IDs::rate.getParamID());
     octavesPtr     = apvts.getRawParameterValue (IDs::octaves.getParamID());
 
+    // Cache new master raw pointers [43]
+    masterVelocityPtr = apvts.getRawParameterValue (IDs::masterVelocity.getParamID());
+    masterSwingPtr    = apvts.getRawParameterValue (IDs::masterSwing.getParamID());
+
     juce::ParameterID rates[] = { IDs::rhythmMorphLfoRate, IDs::restLfoRate, IDs::legatoLfoRate, IDs::rateLfoRate, IDs::entropyLfoRate, IDs::harmonyLfoRate, IDs::chaosLfoRate, IDs::octavesLfoRate };
     juce::ParameterID depths[] = { IDs::rhythmMorphLfoDepth, IDs::restLfoDepth, IDs::legatoLfoDepth, IDs::rateLfoDepth, IDs::entropyLfoDepth, IDs::harmonyLfoDepth, IDs::chaosLfoDepth, IDs::octavesLfoDepth };
     for (int i = 0; i < 8; ++i) {
@@ -64,7 +68,6 @@ void PluginProcessor::scheduleNoteOff (juce::MidiBuffer& midi, int pitch, int de
     else scheduledNoteOffs.push_back ({ pitch, delaySamples });
 }
 
-// Active Anchor State & Snapshot snap routines
 void PluginProcessor::setActiveAnchor (bool useSceneB)
 {
     if (isSceneBActiveAnchor.load() == useSceneB) return;
@@ -101,10 +104,8 @@ void PluginProcessor::captureActiveParametersToActiveScene()
 
 void PluginProcessor::updateLfoModulations (int numSamples, double bpm)
 {
-    // Auto-record active parameters to the active scene in real-time
     captureActiveParametersToActiveScene();
 
-    // Check if the Scene Target Anchor switched
     bool isSceneBActive = isSceneBActiveAnchor.load();
     if (isSceneBActive != lastSceneBActiveState)
     {
@@ -127,7 +128,6 @@ void PluginProcessor::updateLfoModulations (int numSamples, double bpm)
     int cycleIndex = juce::jlimit (0, 3, static_cast<int> (cycleLengthPtr->load()));
     currentBarInCycle = (static_cast<int>(std::floor(mSongPositionPPQ / 4.0)) % ((cycleIndex == 0) ? 1 : (cycleIndex == 1) ? 2 : (cycleIndex == 2) ? 4 : 8)) + 1;
 
-    // Crossfader morphing interpolation (Governed strictly by crossfader position)
     float morphVal = morphPtr->load();
     auto morphValue = [&](float valA, float valB) -> float { return (valA * (1.0f - morphVal)) + (valB * morphVal); };
 
@@ -139,7 +139,7 @@ void PluginProcessor::updateLfoModulations (int numSamples, double bpm)
         if (rateChoice == 0) return baseVal;
         double divPPQ = (rateChoice == 1) ? 1.0 : (rateChoice == 2) ? 0.5 : (rateChoice == 3) ? 0.25 : 0.125, periodSamples = samplesPerBeat * divPPQ;
         lfoPhases[index] += (sampleDelta / periodSamples); 
-        if (lfoPhases[index] >= 1.0) lfoPhases[index] = std::fmod (lfoPhases[index], 1.0); // Safe phase wrap accumulator [43]
+        if (lfoPhases[index] >= 1.0) lfoPhases[index] = std::fmod (lfoPhases[index], 1.0); 
         return juce::jlimit (minVal, maxVal, baseVal + (static_cast<float> (std::sin (lfoPhases[index] * juce::MathConstants<double>::twoPi)) * depth * ((maxVal - minVal) * 0.5f)));
     };
 
@@ -160,7 +160,6 @@ void PluginProcessor::updateLfoModulations (int numSamples, double bpm)
 
 void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    // 1. Thread-safe Deferred Preset Loader [43]
     int presetToLoad = pendingPresetToLoad.exchange (-1);
     if (presetToLoad >= 0 && presetToLoad < 8)
     {
@@ -186,7 +185,6 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     bool isPolyActive = polyPtr->load() > 0.5f;
     bool isFreezeActive = freezePtr->load() > 0.5f;
 
-    // Snapshot Freeze Caching (Captures note pool, parameters, and faders)
     if (isFreezeActive && !lastFreezeState) {
         lastFreezeState = true;
         frozenActiveHeldNotes = activeHeldNotes;
@@ -215,7 +213,6 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         else ++it;
     }
 
-    // 2. Infinite MIDI Note Leak Hang Fix [43]
     static bool wasLatchActive = false;
     if (wasLatchActive && !isLatchActive)
     {
@@ -254,9 +251,9 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         int currentRate = isFreezeActive ? frozenRateIdx : activeRateIdx;
         double stepLengthPPQ = (currentRate == 0) ? 1.0 : (currentRate == 1) ? 0.5 : (currentRate == 2) ? 0.25 : 0.125, stepSamples = samplesPerBeat * stepLengthPPQ;
         
-        // 3. Real-Time Swing/Groove 2-Step Period Offset [43]
-        float currentMorph = isFreezeActive ? frozenMorph : activeMorph;
-        double swingFraction = 0.33 * currentMorph; // Up to 33% step length delay for classic groove
+        // Decouple Swing calculation from Morph. Controlled globally by masterSwingPtr [1.1.8]
+        float currentSwing = masterSwingPtr->load(); 
+        double swingFraction = 0.45 * currentSwing; // Support up to 45% delay offset for solid groove
 
         if (isPlaying) {
             double swingAmtPPQ = swingFraction * stepLengthPPQ;
@@ -301,7 +298,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             else if (currentEntropy < -0.1f && currentEntropy >= -0.5f) playDirection = 3;
             else if (currentEntropy < -0.5f) playDirection = 4;
 
-            int localStep = currentStep.load(); // Added missing localStep variable declaration! [43]
+            int localStep = currentStep.load(); 
             static bool goingForward = true;
             if (playDirection == 1) { 
                 if (goingForward) { localStep++; if (localStep >= 7) { localStep = 7; goingForward = false; } }
@@ -363,9 +360,14 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
                 int octaveShiftCount = (rangeShift > 0) ? ((localStep / 2) % (rangeShift + 1)) : ((rangeShift < 0) ? -((localStep / 2) % (std::abs(rangeShift) + 1)) : 0);
                 float currentChaos = isFreezeActive ? frozenChaos : modChaos;
                 float currentLegato = isFreezeActive ? frozenLegato : modLegato;
+                
+                // Scale global velocity using masterVelocityPtr [1.1.8]
+                float masterVel = masterVelocityPtr->load();
+                juce::uint8 scaledVelocity = static_cast<juce::uint8> (juce::jlimit (1, 127, static_cast<int> (127.0f * masterVel)));
+
                 for (auto pitch : pitchList) {
                     int targetPitch = juce::jlimit(0, 127, pitch + (octaveShiftCount * 12) + ((currentChaos > 0.2f && juce::Random::getSystemRandom().nextFloat() <= currentChaos) ? (juce::Random::getSystemRandom().nextBool() ? 12 : -12) : 0));
-                    processedMidi.addEvent (juce::MidiMessage::noteOn (1, targetPitch, static_cast<juce::uint8>(100)), 0);
+                    processedMidi.addEvent (juce::MidiMessage::noteOn (1, targetPitch, scaledVelocity), 0);
                     mLastNotePlayed = targetPitch; mNoteOffTime = static_cast<int>(stepSamples * currentLegato); scheduleNoteOff (processedMidi, targetPitch, mNoteOffTime);
                 }
             }
@@ -434,10 +436,8 @@ void PluginProcessor::loadPreset (int slotIndex)
 { 
     if (slotIndex >= 0 && slotIndex < 8 && presetSlotsSaved[slotIndex]) 
     { 
-        // 1. Tell the audio thread to safely copy the structs on its next loop [43]
         pendingPresetToLoad.store (slotIndex);
 
-        // 2. Set APVTS parameters (internally atomic & thread-safe)
         apvts.getParameter (IDs::rhythmMorph.getParamID())->setValueNotifyingHost (presets[slotIndex].rhythmMorph); 
         apvts.getParameter (IDs::rest.getParamID())->setValueNotifyingHost (presets[slotIndex].rest); 
         apvts.getParameter (IDs::legato.getParamID())->setValueNotifyingHost (presets[slotIndex].legato); 
@@ -532,7 +532,6 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     auto state = apvts.copyState(); 
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     
-    // Strict null-guards to prevent scanner crashes [43]
     if (xml != nullptr)
     {
         auto* presetsNodeA = xml->createNewChildElement ("SCENE_A_PRESETS");
@@ -607,7 +606,7 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
                 }
             }
         }
-        if (auto* presetsNodeB = xmlState->getChildByName ("SCENE_A_PRESETS")) { // preserving original save mapping name
+        if (auto* presetsNodeB = xmlState->getChildByName ("SCENE_A_PRESETS")) { 
             for (int i = 0; i < 8; ++i) {
                 if (auto* childB = presetsNodeB->getChildByName ("SLOT_" + juce::String (i))) {
                     sceneBSlotsSaved[i] = childB->getBoolAttribute ("saved");
@@ -658,7 +657,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
     params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::cycleLength, "Cycle Length", juce::StringArray { "1 Bar", "2 Bars", "4 Bars", "8 Bars" }, 2)); 
     params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::rate, "Rate", juce::StringArray { "1/4", "1/8", "1/16", "1/32" }, 2)); 
     params.push_back (std::make_unique<juce::AudioParameterInt> (IDs::octaves, "Octaves", -3, 3, 0)); 
-    params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::panelTheme, "Panel Theme", juce::StringArray { "Navy Cyber", "Skyline Eurorack", "Monochrome Minimal", "Matrix Terminal" }, 1));
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (IDs::panelTheme, "Panel Theme", juce::StringArray { "Navy Cyber", "Skyline Eurorack", "Monochrome Minimal", "Matrix Terminal" }, 0));
+
+    // NEW: Register Master Parameters [1.1.8]
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::masterVelocity, "Master Velocity", 0.0f, 1.0f, 0.8f)); // Default 80%
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (IDs::masterSwing, "Master Swing", 0.0f, 1.0f, 0.0f));       // Default 0% (Straight)
 
     auto regLfo = [&](juce::ParameterID rId, juce::ParameterID dId, juce::String nm) {
         params.push_back (std::make_unique<juce::AudioParameterChoice> (rId, nm + " LFO Speed", juce::StringArray { "Off", "1/4", "1/8", "1/16", "1/32" }, 0));
@@ -670,7 +673,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
     return { params.begin(), params.end() };
 }
 
-//==============================================================================
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new PluginProcessor();
