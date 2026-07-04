@@ -10,18 +10,18 @@ class CameoState : public juce::ReferenceCountedObject
 public:
     struct ActiveCameo
     {
-        int type = 0;              
+        int type = 0;              // 0 = Voyager, 1 = James Webb, 2 = Cartoon UFO
         float startX = 0.0f, startY = 0.0f;
         float targetX = 0.0f, targetY = 0.0f;
         double startTimeMs = 0.0;
-        double durationMs = 0.0;   
-        int trajectoryPattern = 0; 
+        double durationMs = 0.0;   // Flight duration
+        int trajectoryPattern = 0; // 0 = Straight, 1 = Arc, 2 = Jitter
         float arcAmplitude = 0.0f;
     };
     
     std::vector<ActiveCameo> activeCameos;
     double lastCameoTriggerTime = 0.0;
-    double nextCameoInterval = 120000.0; 
+    double nextCameoInterval = 120000.0; // 2 minutes minimum
 
     struct FacetTriangle
     {
@@ -53,7 +53,7 @@ void OledDisplay::showParameterOverlay (const juce::String& paramName, float bas
     isOverlayActive = true;
     
     repaint();
-    startTimer (1500); 
+    startTimer (1500); // 1.5 second display timeout
 }
 
 void OledDisplay::setFreezeActive (bool shouldBeActive)
@@ -173,9 +173,9 @@ void OledDisplay::paint (juce::Graphics& g)
         };
 
         float globeCenterX = displayArea.getCentreX(); 
-        float globeCenterY = displayArea.getCentreY() - 32.0f; // Shifted up to clear fader monitor space
-        float globeRadius = displayArea.getHeight() * 0.35f;   
-        float cameraDistance = cameraDistance = 2.2f;;
+        float globeCenterY = displayArea.getY() + 195.0f; // Centered in the top portion of the screen [1.1.8]
+        float globeRadius = displayArea.getHeight() * 0.28f;   // Scaled to prevent overlap [1.1.8]
+        float cameraDistance = 2.2f;
 
         std::vector<juce::Point<float>> projectedPoints;
         for (const auto& v : vertices)
@@ -447,17 +447,17 @@ void OledDisplay::paint (juce::Graphics& g)
         const float colWidth = 26.0f; // Thin columns to prevent layout crowding [1.1.8]
 
         const int numSegments = 16;
-        const float segmentHeight = 6.0f;      
-        const float segmentSpacing = 2.0f;     
-        const float maxLaddersHeight = (numSegments * segmentHeight) + ((numSegments - 1) * segmentSpacing); // 126px height
+        const float segmentHeight = 8.0f;      // Scaled up for higher resolution on the taller screen [1.1.8]
+        const float segmentSpacing = 3.0f;     // Increased spacing [1.1.8]
+        const float maxLaddersHeight = (numSegments * segmentHeight) + ((numSegments - 1) * segmentSpacing); // 173px height [1.1.8]
 
-        // Position fader monitor area to sit precisely inside the OLED bezel [cite: 43]
-        float fadersY = bounds.getHeight() - maxLaddersHeight - 24.0f;
+        // Anchor the fader monitoring ladders exactly inside the lower portion of the OLED screen bezel [cite: 43]
+        float fadersY = bounds.getHeight() - maxLaddersHeight - 40.0f; // 437px absolute Y position [1.1.8]
 
         for (int i = 0; i < 8; ++i)
         {
-            // Center each VU column precisely relative to the fader track centers [cite: 43]
-            float relativeCenter = 31.0f + static_cast<float> (i) * 118.4f;
+            // Center each VU column relative to the 118px fader centers [cite: 43]
+            float relativeCenter = 58.8f + static_cast<float> (i) * 117.6f; // Aligns perfectly to the faders [1.1.8]
             auto colBounds = juce::Rectangle<float> (relativeCenter - colWidth * 0.5f, fadersY, colWidth, maxLaddersHeight);
             
             float faderVal = (processor.sceneA.faders[i] * (1.0f - morphVal)) + (processor.sceneB.faders[i] * morphVal);

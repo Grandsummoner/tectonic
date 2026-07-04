@@ -119,7 +119,7 @@ void ChromaCapsLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton&
     const bool isDiceButton = (text == "Melo" || text == "Arti" || text == "Time" || text == "Navy");
     const bool isPresetButton = (text == "1" || text == "2" || text == "3" || text == "4" || text == "5" || text == "6" || text == "7" || text == "8");
     
-    // Add Latch, Poly, Freeze and default "Seq" to the skip list so they don't double-render [1.1.8]
+    // Add Latch, Poly, Freeze and default "Seq" to the skip list so they don't double-render
     const bool isStaticTopButton = (text == "Latch" || text == "Poly" || text == "Freeze" || text == "Seq");
 
     if (isUtilButton || isDiceButton || isPresetButton || isButtonA || isButtonB || isStaticTopButton)
@@ -127,7 +127,7 @@ void ChromaCapsLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton&
         return; 
     }
 
-    // If the sequencer toggles to "Arp", render it cleanly in C++ [1.1.8]
+    // If the sequencer toggles to "Arp", render it cleanly in C++
     g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     
     if (button.getToggleState())
@@ -145,6 +145,7 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
     bool isFlashing = false;
     juce::Colour flashColour = backgroundColour;
     const juce::String text = button.getButtonText();
+    const bool isDiceButton = (text == "Melo" || text == "Arti" || text == "Time" || text == "Navy");
 
     // 1. Process active preset and utility flash states
     if (auto* editor = dynamic_cast<PluginEditor*> (parentEditor))
@@ -197,7 +198,7 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
     }
     else if (text == "Arp")
     {
-        // Smart Masking: Draw a dark-blue fill to mask the printed "Seq" text underneath, then draw active highlight [1.1.8]
+        // Smart Masking: Draw a dark-blue fill to mask the printed "Seq" text underneath, then draw active highlight
         g.setColour (juce::Colour (0xFF1E222A)); 
         g.fillRoundedRectangle (bounds, cornerSize);
         
@@ -205,6 +206,20 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
         g.fillRoundedRectangle (bounds, cornerSize);
         g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.6f));
         g.drawRoundedRectangle (bounds.reduced(0.5f), cornerSize, 1.25f);
+    }
+    else if (isDiceButton)
+    {
+        // Watermark Masking: Draw solid dark-slate backing to completely hide the Gemini symbol [1.1.8]
+        g.setColour (juce::Colour (0xFF1E222A));
+        g.fillRoundedRectangle (bounds, cornerSize);
+        
+        if (shouldDrawButtonAsDown) {
+            g.setColour (juce::Colours::black.withAlpha (0.35f));
+            g.fillRoundedRectangle (bounds, cornerSize);
+        } else if (shouldDrawButtonAsHighlighted) {
+            g.setColour (juce::Colours::white.withAlpha (0.12f));
+            g.fillRoundedRectangle (bounds, cornerSize);
+        }
     }
     else if (button.getClickingTogglesState() && button.getToggleState())
     {
@@ -226,7 +241,7 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
     }
     else
     {
-        return; // Transparent to reveal asset buttons [1.1.8]
+        return; // Transparent to reveal asset buttons
     }
 }
 
