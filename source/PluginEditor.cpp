@@ -494,6 +494,7 @@ void PluginEditor::resized()
 
     // Vertical Faders (Distributed across full bottom width)
     const float faderCenters[8] = { 121.5f, 303.8f, 486.1f, 668.4f, 850.7f, 1033.0f, 1215.3f, 1397.5f };
+    juce::Slider* faderPtrs[] = { &fader1, &fader2, &fader3, &fader4, &fader5, &fader6, &fader7, &fader8 };
     for (int i = 0; i < 8; ++i) 
     {
         faderPtrs[i]->setBounds (static_cast<int>(faderCenters[i]) - 15, 874, 30, 120);
