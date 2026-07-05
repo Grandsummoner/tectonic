@@ -1,4 +1,4 @@
-#define DRAW_DIAGNOSTIC_GRID 1  // Set to 0 to hide the diagnostic grid and mouse tracker
+#define DRAW_DIAGNOSTIC_GRID 0  // Set to 1 to show the overlay and coordinate bubble, 0 to hide it
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
@@ -220,7 +220,6 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     setResizable (false, false); 
     setSize (1000, 680); 
 
-    // Enable mouse tracking for coordinates if diagnostic overlay is active
     if (DRAW_DIAGNOSTIC_GRID)
         setMouseClickGrabsKeyboardFocus (true);
 
@@ -387,7 +386,7 @@ void PluginEditor::paint (juce::Graphics& g)
         g.fillAll (juce::Colour (0xFF0D1E36));
     }
 
-    // 2. Render toggleable diagnostic overlay grid and real-time mouse position [1.1.8]
+    // 2. Render diagnostic coordinate overlay grid
     if (DRAW_DIAGNOSTIC_GRID)
     {
         const int width = getWidth();
@@ -408,7 +407,7 @@ void PluginEditor::paint (juce::Graphics& g)
         for (int y = 50; y < height; y += 50)
         {
             g.setColour (juce::Colour (0x44FF3366));
-            g.drawHorizontalLine (y, 0.0f, static_cast<float> (width));
+            g.drawHorizontalLine (y, 0.0f, static_cast<float> (height));
             
             g.setColour (juce::Colour (0xBBFF3366));
             g.setFont (juce::FontOptions (9.0f));
@@ -419,12 +418,12 @@ void PluginEditor::paint (juce::Graphics& g)
         auto mousePos = getMouseXYRelative();
         if (mousePos.x >= 0 && mousePos.x <= width && mousePos.y >= 0 && mousePos.y <= height)
         {
-            // Draw crosshair at cursor
+            // Draw crosshairs
             g.setColour (juce::Colours::yellow.withAlpha (0.5f));
             g.drawVerticalLine (mousePos.x, 0.0f, static_cast<float> (height));
             g.drawHorizontalLine (mousePos.y, 0.0f, static_cast<float> (width));
 
-            // Draw floating coordinate info bubble
+            // Draw coordinate info bubble
             g.setColour (juce::Colours::black.withAlpha (0.85f));
             g.fillRoundedRectangle (static_cast<float> (mousePos.x) + 12.0f, static_cast<float> (mousePos.y) + 12.0f, 65.0f, 20.0f, 3.0f);
             
@@ -440,70 +439,72 @@ void PluginEditor::paint (juce::Graphics& g)
 
 void PluginEditor::resized()
 {
-    // Updated bounds coordinate layout to fit the clean 1000x680 proportions
+    // Integrated exact pinpoint measurements from your diagnostic screenshots (Batch 1-3)
     
-    // 1. OLED Display screen centered
+    // 1. OLED Display screen
     oledDisplay.setBounds (160, 60, 680, 320);
 
-    // 2. Left sidebar 2x2 grid repositioned at the top-left corner
-    saveButton.setBounds (20, 15, 50, 35); 
-    recallButton.setBounds (80, 15, 50, 35); 
-    copyButton.setBounds (20, 55, 50, 35); 
-    initButton.setBounds (80, 55, 50, 35);
+    // 2. Left sidebar 2x2 grid centered exactly on your button caps (Centers: X=54.5, 97.5, Y=61.5, 94.0)
+    saveButton.setBounds (34, 47, 40, 28); 
+    recallButton.setBounds (78, 47, 40, 28); 
+    copyButton.setBounds (34, 80, 40, 28); 
+    initButton.setBounds (78, 80, 40, 28);
 
-    // 3. Left sidebar small knobs positioned vertically below the 2x2 grid
-    rhythmMorphKnob.setBounds (20, 100, 110, 70);
-    restKnob.setBounds (20, 170, 110, 70);
-    legatoKnob.setBounds (20, 240, 110, 70);
-    rateKnob.setBounds (20, 310, 110, 70);
+    // 3. Left sidebar small knobs centered exactly on your dials (Centers: X=73.5, Y=145.5, 208, 270.5, 333)
+    // Sized to 111x70, giving them 7px TextBoxBelow height offset alignment
+    rhythmMorphKnob.setBounds (18, 110, 111, 70);
+    restKnob.setBounds (18, 173, 111, 70);
+    legatoKnob.setBounds (18, 235, 111, 70);
+    rateKnob.setBounds (18, 298, 111, 70);
 
-    // 4. Left Master Knob sitting exactly on the horizontal axis (Center Y = 430)
-    masterVelocityKnob.setBounds (20, 375, 110, 110);
+    // 4. Left Master Knob sitting exactly on the horizontal axis (Center: X=73.5, Y=439.5)
+    masterVelocityKnob.setBounds (13, 379, 121, 121);
 
-    // 5. Right sidebar 2x2 grid repositioned at the top-right corner
-    diceMeloButton.setBounds (870, 15, 50, 35); 
-    diceArtiButton.setBounds (930, 15, 50, 35); 
-    diceTimeButton.setBounds (870, 55, 50, 35); 
-    diceNavyButton.setBounds (930, 55, 50, 35);
+    // 5. Right sidebar 2x2 grid centered exactly on your button caps (Centers: X=902.5, 945.5, Y=61.5, 94.0)
+    diceMeloButton.setBounds (882, 47, 40, 28); 
+    diceArtiButton.setBounds (926, 47, 40, 28); 
+    diceTimeButton.setBounds (882, 80, 40, 28); 
+    diceNavyButton.setBounds (926, 80, 40, 28);
 
-    // 6. Right sidebar small knobs positioned vertically below the 2x2 grid
-    entropyKnob.setBounds (870, 100, 110, 70);
-    harmonyKnob.setBounds (870, 170, 110, 70);
-    chaosKnob.setBounds (870, 240, 110, 70);
-    octavesKnob.setBounds (870, 310, 110, 70);
+    // 6. Right sidebar small knobs centered exactly on your dials (Centers: X=926.5, Y=145.5, 208, 270.5, 333)
+    entropyKnob.setBounds (871, 110, 111, 70);
+    harmonyKnob.setBounds (871, 173, 111, 70);
+    chaosKnob.setBounds (871, 235, 111, 70);
+    octavesKnob.setBounds (871, 298, 111, 70);
 
-    // 7. Right Master Knob sitting exactly on the horizontal axis (Center Y = 430)
-    masterSwingKnob.setBounds (870, 375, 110, 110);
+    // 7. Right Master Knob sitting exactly on the horizontal axis (Center: X=926.5, Y=439.5)
+    masterSwingKnob.setBounds (866, 379, 121, 121);
 
-    // 8. Top Row Dropdowns (Aligned inside header slots)
-    rootKeyBox.setBounds (180, 20, 75, 24); 
-    scaleTypeBox.setBounds (260, 20, 75, 24); 
-    cycleLengthBox.setBounds (340, 20, 75, 24);
-    panelThemeBox.setBounds (420, 20, 75, 24); 
+    // 8. Top Row Dropdowns (Aligned inside header slots, centered vertically on Y = 26)
+    rootKeyBox.setBounds (162, 15, 80, 22); 
+    scaleTypeBox.setBounds (247, 15, 80, 22); 
+    cycleLengthBox.setBounds (332, 15, 80, 22);
+    panelThemeBox.setBounds (417, 15, 80, 22); 
     
-    // 9. Top Row Performance buttons
-    latchButton.setBounds (505, 20, 75, 24); 
-    arpSeqButton.setBounds (585, 20, 75, 24); 
-    polyButton.setBounds (665, 20, 75, 24); 
-    freezeButton.setBounds (745, 20, 75, 24);
+    // 9. Top Row Performance buttons (Aligned inside header slots, centered vertically on Y = 26)
+    latchButton.setBounds (503, 15, 80, 22); 
+    arpSeqButton.setBounds (588, 15, 80, 22); 
+    polyButton.setBounds (673, 15, 80, 22); 
+    freezeButton.setBounds (758, 15, 80, 22);
 
-    // 10. Horizontal Crossfader Row situated above the preset boxes (Center Y = 430)
-    sceneAButton.setBounds (180, 410, 40, 40);
-    morphCrossfader.setBounds (240, 410, 520, 40);
-    sceneBButton.setBounds (780, 410, 40, 40);
+    // 10. Horizontal Crossfader Row restricted between Button A and B (Centers: X=255 and 745, Axis Y = 424)
+    // Crossfader track fits perfectly inside the printed 350-650 slot range (width 300)
+    sceneAButton.setBounds (233, 402, 44, 44);
+    morphCrossfader.setBounds (350, 404, 300, 40);
+    sceneBButton.setBounds (723, 402, 44, 44);
 
-    // 11. Upfader and Preset Box column alignment
-    // Calculate the 8 column centers symmetrically inside the 700px center space
+    // 11. Symmetrical Column Alignment (Y = 590 to 645 track length)
+    // Centered horizontally on the 8 columns starting at 75 with exact 121.28px spacing
     for (int i = 0; i < 8; ++i) 
     {
-        float trackCenter = 195.0f + static_cast<float> (i) * 87.0f;
+        float trackCenter = 75.0f + static_cast<float> (i) * 121.43f;
         
-        // Preset Matrix Switches (Memory Slots 1-8) centered over their tracks (Y = 475 to 545)
+        // Preset Matrix Switches centered over their tracks (Y = 475 to 545)
         presetButtons[i].setBounds (static_cast<int> (trackCenter) - 35, 475, 70, 70);
 
-        // Upfaders aligned inside their slots inside the black bottom strip (Y = 575 to 675)
+        // Upfaders aligned inside their slots in the black bottom strip (Y = 565 to 665)
         juce::Slider* faderPtrs[] = { &fader1, &fader2, &fader3, &fader4, &fader5, &fader6, &fader7, &fader8 };
-        faderPtrs[i]->setBounds (static_cast<int> (trackCenter) - 15, 575, 30, 100);
+        faderPtrs[i]->setBounds (static_cast<int> (trackCenter) - 15, 565, 30, 100);
     }
 }
 
@@ -596,7 +597,6 @@ void PluginEditor::timerCallback()
         }
     }
 
-    // Force editor to repaint during diagnostics so crosshairs track mouse updates
     if (DRAW_DIAGNOSTIC_GRID)
         repaint();
 
