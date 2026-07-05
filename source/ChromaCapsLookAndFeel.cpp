@@ -1,5 +1,3 @@
---- START OF FILE ChromaCapsLookAndFeel.cpp ---
-
 #include "ChromaCapsLookAndFeel.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
@@ -442,4 +440,3 @@ void ChromaCapsLookAndFeel::drawLabel (juce::Graphics& g, juce::Label& label)
                       textArea.getWidth(), textArea.getHeight(), 
                       label.getJustificationType(), 1);
 }
---- END OF FILE ChromaCapsLookAndFeel.cpp ---

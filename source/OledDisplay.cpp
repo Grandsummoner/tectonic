@@ -1,5 +1,3 @@
---- START OF FILE OledDisplay.cpp ---
-
 #include "OledDisplay.h"
 #include "PluginProcessor.h"
 #include "AppTheme.h"
@@ -515,4 +513,3 @@ void OledDisplay::paint (juce::Graphics& g)
 void OledDisplay::resized()
 {
 }
---- END OF FILE OledDisplay.cpp ---

@@ -1,5 +1,3 @@
---- START OF FILE PluginEditor.cpp ---
-
 #define DRAW_DIAGNOSTIC_GRID 0  // Set to 1 to show the overlay and coordinate bubble, 0 to hide it
 
 #include "PluginProcessor.h"
@@ -631,4 +629,3 @@ void PluginEditor::updateSliderTextBoxThemeColors()
     for (auto* title : rightTitles)
         title->setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.8f));
 }
---- END OF FILE PluginEditor.cpp ---
