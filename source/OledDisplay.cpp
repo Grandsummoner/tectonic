@@ -173,8 +173,8 @@ void OledDisplay::paint (juce::Graphics& g)
         };
 
         float globeCenterX = displayArea.getCentreX(); 
-        float globeCenterY = displayArea.getY() + 195.0f; // Shifted up to sit in upper portion of screen [1.1.8]
-        float globeRadius = displayArea.getHeight() * 0.28f;   // Scaled radius to prevent overlapping columns [1.1.8]
+        float globeCenterY = displayArea.getY() + 140.0f; // Shifted up to clear the VU space [1.1.8]
+        float globeRadius = displayArea.getHeight() * 0.32f;   
         float cameraDistance = 2.2f;
 
         std::vector<juce::Point<float>> projectedPoints;
@@ -457,7 +457,7 @@ void OledDisplay::paint (juce::Graphics& g)
         for (int i = 0; i < 8; ++i)
         {
             // Center each VU column relative to the 110.85px fader track centers [cite: 43]
-            float relativeCenter = 58.8f + static_cast<float> (i) * 117.6f; // Aligns perfectly to the faders [1.1.8]
+            float relativeCenter = 52.0f + static_cast<float> (i) * 110.85f; // Aligns with the faders [1.1.8]
             auto colBounds = juce::Rectangle<float> (relativeCenter - colWidth * 0.5f, fadersY, colWidth, maxLaddersHeight);
             
             float faderVal = (processor.sceneA.faders[i] * (1.0f - morphVal)) + (processor.sceneB.faders[i] * morphVal);

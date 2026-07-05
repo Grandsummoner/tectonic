@@ -412,28 +412,28 @@ void PluginEditor::paint (juce::Graphics& g)
 
 void PluginEditor::resized()
 {
-    // Mapped bounds coordinate layout [1.1.8]
+    // Precision structural bounds coordinate maps [1.1.8]
     
     // 1. OLED Display screen fits inside the real screen bezel artwork area [1.1.8]
-    oledDisplay.setBounds (180, 54, 880, 361);
+    oledDisplay.setBounds (180, 90, 880, 420);
 
-    // 2. Left side knobs centered over printed backings at exact uniform Y centers (110, 220, 330, 440, 600) [1.1.8]
-    rhythmMorphKnob.setBounds (30, 65, 110, 90);
-    restKnob.setBounds (30, 175, 110, 90);
-    legatoKnob.setBounds (30, 285, 110, 90);
-    rateKnob.setBounds (30, 395, 110, 90);
+    // 2. Left side knobs centered over printed backings (Centers: Y = 110, 220, 330, 440, and 600) [1.1.8]
+    rhythmMorphKnob.setBounds (20, 65, 110, 90);
+    restKnob.setBounds (20, 175, 110, 90);
+    legatoKnob.setBounds (20, 285, 110, 90);
+    rateKnob.setBounds (20, 395, 110, 90);
     
-    // Master velocity knob centered at Y = 600 [1.1.8]
-    masterVelocityKnob.setBounds (30, 555, 110, 90);
+    // Master velocity knob centered at Y = 600
+    masterVelocityKnob.setBounds (20, 555, 110, 90);
 
-    // 3. Right side knobs centered over printed backings [1.1.8]
-    entropyKnob.setBounds (1101, 65, 110, 90);
-    harmonyKnob.setBounds (1101, 175, 110, 90);
-    chaosKnob.setBounds (1101, 285, 110, 90);
-    octavesKnob.setBounds (1101, 395, 110, 90);
+    // 3. Right side knobs centered over printed backings (Centers: Y = 110, 220, 330, 440, and 600) [1.1.8]
+    entropyKnob.setBounds (1111, 65, 110, 90);
+    harmonyKnob.setBounds (1111, 175, 110, 90);
+    chaosKnob.setBounds (1111, 285, 110, 90);
+    octavesKnob.setBounds (1111, 395, 110, 90);
     
-    // Master swing knob centered at Y = 600 [1.1.8]
-    masterSwingKnob.setBounds (1101, 555, 110, 90);
+    // Master swing knob centered at Y = 600
+    masterSwingKnob.setBounds (1111, 555, 110, 90);
 
     // 4. Top Row Dropdowns (Aligned inside top bar header slots) [1.1.8]
     rootKeyBox.setBounds (180, 20, 105, 24); 
@@ -447,37 +447,37 @@ void PluginEditor::resized()
     polyButton.setBounds (845, 20, 105, 24); 
     freezeButton.setBounds (955, 20, 105, 24);
 
-    // 6. Preset Matrix Switches centered horizontally over fader track columns (Y=432) [1.1.8]
+    // 6. Preset Matrix Switches (Y=530, height=30) centered horizontally over the upfader tracks [1.1.8]
     for (int i = 0; i < 8; ++i) 
     {
         float trackCenter = 232.0f + static_cast<float> (i) * 110.85f;
-        presetButtons[i].setBounds (static_cast<int> (trackCenter) - 50, 432, 100, 26);
+        presetButtons[i].setBounds (static_cast<int> (trackCenter) - 50, 530, 100, 30);
     }
 
-    // 7. Central Crossfader Row shifted to Y=478 [1.1.8]
+    // 7. Central Crossfader Row shifted to Y=575 to sit exactly inside its slot [1.1.8]
     int rowWidth = 350;
     int rowStartX = 180 + (880 - rowWidth) / 2;
-    sceneAButton.setBounds (rowStartX, 478, 40, 26);
-    morphCrossfader.setBounds (rowStartX + 45, 478, 260, 26);
-    sceneBButton.setBounds (rowStartX + 310, 478, 40, 26);
+    sceneAButton.setBounds (rowStartX, 575, 40, 30);
+    morphCrossfader.setBounds (rowStartX + 45, 575, 260, 30);
+    sceneBButton.setBounds (rowStartX + 310, 575, 40, 30);
 
-    // 8. Left 2x2 Utility Grid Buttons (Y=675 to 747, aligned in left square slot) [1.1.8]
-    saveButton.setBounds (25, 675, 52, 32); 
-    recallButton.setBounds (83, 675, 52, 32); 
-    copyButton.setBounds (25, 715, 52, 32); 
-    initButton.setBounds (83, 715, 52, 32);
+    // 8. Left 2x2 Utility Grid Buttons (Save/Recall: Y=530, Copy/Init: Y=575, aligns with printed faceplate) [1.1.8]
+    saveButton.setBounds (18, 530, 68, 36); 
+    recallButton.setBounds (91, 530, 68, 36); 
+    copyButton.setBounds (18, 575, 68, 36); 
+    initButton.setBounds (91, 575, 68, 36);
 
-    // 9. Right 2x2 Dice Grid Buttons (Y=675 to 747, covers the watermark) [1.1.8]
-    diceMeloButton.setBounds (1106, 675, 52, 32); 
-    diceArtiButton.setBounds (1164, 675, 52, 32); 
-    diceTimeButton.setBounds (1106, 715, 52, 32); 
-    diceNavyButton.setBounds (1164, 715, 52, 32);
+    // 9. Right 2x2 Dice Grid Buttons (Melo/Arti: Y=530, Time/Navy: Y=575, covers the watermark) [1.1.8]
+    diceMeloButton.setBounds (1082, 530, 68, 36); 
+    diceArtiButton.setBounds (1155, 530, 68, 36); 
+    diceTimeButton.setBounds (1082, 575, 68, 36); 
+    diceNavyButton.setBounds (1155, 575, 68, 36);
 
-    // 10. Upfaders (Centered over 250px vertical track slots, Y=530 to 780) [1.1.8]
+    // 10. Upfaders (Centered over 200px vertical track slots, Y=620 to 820) [1.1.8]
     juce::Slider* faders[] = { &fader1, &fader2, &fader3, &fader4, &fader5, &fader6, &fader7, &fader8 };
     for (int i = 0; i < 8; ++i) {
         float trackCenter = 232.0f + static_cast<float> (i) * 110.85f;
-        faders[i]->setBounds (static_cast<int> (trackCenter) - 15, 530, 30, 250);
+        faders[i]->setBounds (static_cast<int> (trackCenter) - 15, 620, 30, 200);
     }
 }
 

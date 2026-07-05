@@ -94,7 +94,7 @@ void ChromaCapsLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, i
         }
     }
 
-    // Note: We skip drawing the solid background ellipse to let the
+    // Note: We skip drawing the solid background ellipse here to let the
     // photorealistic brushed metallic knob asset from the PNG panel show through!
 
     // 4. Draw pointer needle centered over the asset knob
