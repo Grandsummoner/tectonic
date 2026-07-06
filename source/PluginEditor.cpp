@@ -459,7 +459,8 @@ void PluginEditor::paintOverChildren (juce::Graphics& g)
         g.setColour (juce::Colour (0xFF05070A)); // Solid dark fill to clear background faceplate area
         g.fillRect (boxX, boxY, boxW, boxH);
 
-        if (smallKnobs[i]->isMouseDragging())
+        // Safe JUCE getThumbBeingDragged check to strictly monitor active dragging
+        if (smallKnobs[i]->getThumbBeingDragged() >= 0)
         {
             // Display a sleek horizontal progress bar instead of text [1.2.0]
             float val = static_cast<float> (smallKnobs[i]->getValue());
@@ -631,49 +632,50 @@ void PluginEditor::timerCallback()
     bool isSceneB = processor.isSceneBActiveAnchor.load();
     SceneState& activeScene = isSceneB ? processor.sceneB : processor.sceneA;
 
-    if (rhythmMorphKnob.isMouseDragging()) {
+    // Safe getThumbBeingDragged check to strictly monitor active dragging
+    if (rhythmMorphKnob.getThumbBeingDragged() >= 0) {
         activeScene.rhythmMorph = static_cast<float>(rhythmMorphKnob.getValue());
     } else {
         rhythmMorphKnob.setValue (interpolate (processor.sceneA.rhythmMorph, processor.sceneB.rhythmMorph), juce::dontSendNotification);
     }
 
-    if (restKnob.isMouseDragging()) {
+    if (restKnob.getThumbBeingDragged() >= 0) {
         activeScene.rest = static_cast<float>(restKnob.getValue());
     } else {
         restKnob.setValue (interpolate (processor.sceneA.rest, processor.sceneB.rest), juce::dontSendNotification);
     }
 
-    if (legatoKnob.isMouseDragging()) {
+    if (legatoKnob.getThumbBeingDragged() >= 0) {
         activeScene.legato = static_cast<float>(legatoKnob.getValue());
     } else {
         legatoKnob.setValue (interpolate (processor.sceneA.legato, processor.sceneB.legato), juce::dontSendNotification);
     }
 
-    if (rateKnob.isMouseDragging()) {
+    if (rateKnob.getThumbBeingDragged() >= 0) {
         activeScene.rate = static_cast<float>(rateKnob.getValue());
     } else {
         rateKnob.setValue (interpolate (processor.sceneA.rate, processor.sceneB.rate), juce::dontSendNotification);
     }
 
-    if (entropyKnob.isMouseDragging()) {
+    if (entropyKnob.getThumbBeingDragged() >= 0) {
         activeScene.entropy = static_cast<float>(entropyKnob.getValue());
     } else {
         entropyKnob.setValue (interpolate (processor.sceneA.entropy, processor.sceneB.entropy), juce::dontSendNotification);
     }
 
-    if (harmonyKnob.isMouseDragging()) {
+    if (harmonyKnob.getThumbBeingDragged() >= 0) {
         activeScene.harmony = static_cast<float>(harmonyKnob.getValue());
     } else {
         harmonyKnob.setValue (interpolate (processor.sceneA.harmony, processor.sceneB.harmony), juce::dontSendNotification);
     }
 
-    if (chaosKnob.isMouseDragging()) {
+    if (chaosKnob.getThumbBeingDragged() >= 0) {
         activeScene.chaos = static_cast<float>(chaosKnob.getValue());
     } else {
         chaosKnob.setValue (interpolate (processor.sceneA.chaos, processor.sceneB.chaos), juce::dontSendNotification);
     }
 
-    if (octavesKnob.isMouseDragging()) {
+    if (octavesKnob.getThumbBeingDragged() >= 0) {
         activeScene.octaves = static_cast<float>(octavesKnob.getValue());
     } else {
         octavesKnob.setValue (interpolate (processor.sceneA.octaves, processor.sceneB.octaves), juce::dontSendNotification);
@@ -681,7 +683,7 @@ void PluginEditor::timerCallback()
 
     juce::Slider* faders[] = { &fader1, &fader2, &fader3, &fader4, &fader5, &fader6, &fader7, &fader8 };
     for (int i = 0; i < 8; ++i) {
-        if (faders[i]->isMouseDragging()) {
+        if (faders[i]->getThumbBeingDragged() >= 0) {
             activeScene.faders[i] = static_cast<float>(faders[i]->getValue());
         } else {
             faders[i]->setValue (interpolate (processor.sceneA.faders[i], processor.sceneB.faders[i]), juce::dontSendNotification);
@@ -693,7 +695,7 @@ void PluginEditor::timerCallback()
     juce::String smallNames[] = { "Rhythm Morph", "Rest", "Legato", "Rate", "Entropy", "Harmony", "Chaos", "Octaves" };
     for (int i = 0; i < 8; ++i)
     {
-        if (smallKnobs[i]->isMouseDragging())
+        if (smallKnobs[i]->getThumbBeingDragged() >= 0)
         {
             float val = static_cast<float> (smallKnobs[i]->getValue());
             
@@ -722,18 +724,18 @@ void PluginEditor::timerCallback()
 
     for (int i = 0; i < 8; ++i)
     {
-        if (faders[i]->isMouseDragging())
+        if (faders[i]->getThumbBeingDragged() >= 0)
         {
             oledDisplay.showParameterOverlay ("Step " + juce::String (i + 1) + " Prob", static_cast<float> (faders[i]->getValue()), "Off");
         }
     }
 
-    if (masterVelocityKnob.isMouseDragging())
+    if (masterVelocityKnob.getThumbBeingDragged() >= 0)
     {
         oledDisplay.showParameterOverlay ("Note Density", static_cast<float> (masterVelocityKnob.getValue()), "Off");
     }
 
-    if (masterSwingKnob.isMouseDragging())
+    if (masterSwingKnob.getThumbBeingDragged() >= 0)
     {
         oledDisplay.showParameterOverlay ("Master Swing", static_cast<float> (masterSwingKnob.getValue()), "Off");
     }
