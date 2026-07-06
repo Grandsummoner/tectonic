@@ -124,10 +124,55 @@ void ChromaCapsLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton&
     const bool isPresetButton = (text == "1" || text == "2" || text == "3" || text == "4" || text == "5" || text == "6" || text == "7" || text == "8");
     const bool isStaticTopButton = (text == "Latch" || text == "Poly" || text == "Freeze" || text == "Seq" || text == "SEQ" || text == "Arp" || text == "ARP");
 
-    // Hide preset and Scene text completely to make them transparent interactive hitboxes
-    if (isPresetButton || text == "A" || text == "B")
+    if (text == "A" || text == "B")
     {
         return; 
+    }
+
+    if (isPresetButton)
+    {
+        int pIdx = text.getIntValue() - 1;
+        bool isSaved = false;
+        int flashTimer = 0;
+        int flashType = 0;
+
+        if (auto* editor = dynamic_cast<PluginEditor*> (parentEditor))
+        {
+            if (pIdx >= 0 && pIdx < 8)
+            {
+                isSaved = editor->processor.presetSlotsSaved[pIdx];
+                flashTimer = editor->presetFlashTimer[pIdx];
+                flashType = editor->presetFlashType[pIdx];
+            }
+        }
+
+        juce::Colour textCol = juce::Colour (0xFF4F525D); // Dim grey default
+
+        if (flashTimer > 0)
+        {
+            bool flashOn = ((flashTimer / 4) % 2 == 1);
+            if (flashOn)
+            {
+                textCol = (flashType == 1) ? juce::Colour::fromString ("#FF00E676") : juce::Colour::fromString ("#FF00E5FF");
+            }
+            else if (isSaved)
+            {
+                textCol = juce::Colour::fromString ("#FF00D2FF");
+            }
+        }
+        else if (isSaved)
+        {
+            textCol = button.isMouseOver() ? juce::Colours::white : juce::Colour::fromString ("#FF00D2FF").withAlpha (0.75f);
+        }
+        else if (button.isMouseOver())
+        {
+            textCol = juce::Colours::lightgrey;
+        }
+
+        g.setColour (textCol);
+        g.setFont (juce::FontOptions (18.0f, juce::Font::bold));
+        g.drawFittedText (text, button.getLocalBounds(), juce::Justification::centred, 1);
+        return;
     }
 
     if (isUtilButton || isDiceButton)
@@ -182,11 +227,21 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
                 isLit = ((editor->initFlashTimer / 4) % 2 == 1);
         }
 
+        juce::Colour ledColor = juce::Colour (0xFF00D2FF); // Default Cyan
+        if (text == "Save") ledColor = juce::Colour::fromString ("#FFFFB300");        // Gold/Amber
+        else if (text == "Recall") ledColor = juce::Colour::fromString ("#FF00E676");   // Emerald Green
+        else if (text == "Copy") ledColor = juce::Colour::fromString ("#FF00B0FF");     // Sky Blue
+        else if (text == "Init") ledColor = juce::Colour::fromString ("#FFFF1744");     // Crimson/Red
+        else if (text == "Melo") ledColor = juce::Colour::fromString ("#FFD500F9");     // Purple/Violet
+        else if (text == "Arti") ledColor = juce::Colour::fromString ("#FFFF6D00");     // Orange/Coral
+        else if (text == "Time") ledColor = juce::Colour::fromString ("#FFFFEA00");     // Bright Yellow
+        else if (text == "Navy") ledColor = juce::Colour::fromString ("#FF18FFFF");     // Electric Teal/Cyan
+
         if (isLit)
         {
-            g.setColour (juce::Colour (0xFF00D2FF));
+            g.setColour (ledColor);
             g.fillRoundedRectangle (ledRect, 1.0f);
-            g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.4f));
+            g.setColour (ledColor.withAlpha (0.4f));
             g.drawRoundedRectangle (ledRect.expanded (1.5f), 1.5f, 0.75f);
         }
         else
@@ -206,31 +261,67 @@ void ChromaCapsLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Butto
     }
     else if (text == "A" || text == "B" || isPresetButton)
     {
-        // 100% Invisible layout hitboxes - only lights up with a subtle cyan glow when hovered or clicked
         bool isLit = false;
         
         if (isPresetButton) {
+            int pIdx = text.getIntValue() - 1;
+            bool isSaved = false;
+            int flashTimer = 0;
+            int flashType = 0;
+
             if (auto* editor = dynamic_cast<PluginEditor*> (parentEditor)) {
-                int pIdx = text.getIntValue() - 1;
-                if (pIdx >= 0 && pIdx < 8 && editor->presetFlashTimer[pIdx] > 0)
-                    isLit = ((editor->presetFlashTimer[pIdx] / 4) % 2 == 1);
+                if (pIdx >= 0 && pIdx < 8) {
+                    isSaved = editor->processor.presetSlotsSaved[pIdx];
+                    flashTimer = editor->presetFlashTimer[pIdx];
+                    flashType = editor->presetFlashType[pIdx];
+                }
             }
+
+            auto innerBounds = bounds.reduced (1.0f);
+            juce::Colour outlineCol = juce::Colour (0xFF1F2229).withAlpha (0.4f);
+            juce::Colour fillCol = juce::Colours::transparentBlack;
+
+            if (flashTimer > 0) {
+                bool flashOn = ((flashTimer / 4) % 2 == 1);
+                if (flashOn) {
+                    outlineCol = (flashType == 1) ? juce::Colour::fromString ("#FF00E676") : juce::Colour::fromString ("#FF00E5FF");
+                    fillCol = outlineCol.withAlpha (0.15f);
+                } else if (isSaved) {
+                    outlineCol = juce::Colour::fromString ("#FF00D2FF").withAlpha (0.4f);
+                }
+            } else if (isSaved) {
+                outlineCol = juce::Colour::fromString ("#FF00D2FF").withAlpha (0.35f);
+                if (button.isMouseOver())
+                    outlineCol = juce::Colour::fromString ("#FF00D2FF").withAlpha (0.7f);
+            } else if (button.isMouseOver()) {
+                outlineCol = juce::Colours::white.withAlpha (0.25f);
+            }
+
+            if (button.isDown()) {
+                fillCol = juce::Colours::white.withAlpha (0.05f);
+                outlineCol = juce::Colour::fromString ("#FF00D2FF").withAlpha (0.9f);
+            }
+
+            if (fillCol != juce::Colours::transparentBlack) {
+                g.setColour (fillCol);
+                g.fillRoundedRectangle (innerBounds, cornerSize);
+            }
+
+            g.setColour (outlineCol);
+            g.drawRoundedRectangle (innerBounds, cornerSize, 1.25f);
         } else {
             if (text == "A") isLit = !processor.isSceneBActive();
             if (text == "B") isLit = processor.isSceneBActive();
-        }
 
-        if (isLit || shouldDrawButtonAsDown)
-        {
-            g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.12f));
-            g.fillRoundedRectangle (bounds, cornerSize);
-            g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.4f));
-            g.drawRoundedRectangle (bounds.reduced (0.5f), cornerSize, 1.0f);
-        }
-        else if (shouldDrawButtonAsHighlighted)
-        {
-            g.setColour (juce::Colours::white.withAlpha (0.04f));
-            g.fillRoundedRectangle (bounds, cornerSize);
+            if (isLit || shouldDrawButtonAsDown) {
+                g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.12f));
+                g.fillRoundedRectangle (bounds, cornerSize);
+                g.setColour (juce::Colour (0xFF00D2FF).withAlpha (0.4f));
+                g.drawRoundedRectangle (bounds.reduced (0.5f), cornerSize, 1.0f);
+            } else if (shouldDrawButtonAsHighlighted) {
+                g.setColour (juce::Colours::white.withAlpha (0.04f));
+                g.fillRoundedRectangle (bounds, cornerSize);
+            }
         }
         return; 
     }
@@ -272,21 +363,33 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float trackHeight = 6.0f;
         const float trackY = static_cast<float>(y) + (static_cast<float>(height) - trackHeight) * 0.5f;
 
-        float progress = (sliderPos - static_cast<float>(x)) / static_cast<float>(width);
+        float startX = static_cast<float>(x);
+        float endX = static_cast<float>(x + width);
+        float totalW = static_cast<float>(width);
+
+        // Compress visual range by 5% on both ends so knob won't collide with bezel
+        float margin = totalW * 0.05f;
+        float activeStartX = startX + margin;
+        float activeEndX = endX - margin;
+        float activeW = totalW - (margin * 2.0f);
+
+        float travelRange = maxSliderPos - minSliderPos;
+        float progress = (sliderPos - minSliderPos) / (travelRange != 0.0f ? travelRange : 1.0f);
         progress = juce::jlimit (0.0f, 1.0f, progress);
+
+        float visualThumbX = activeStartX + progress * activeW;
 
         float alphaA = 1.0f - progress;
         g.setColour (t.crossfaderTrackA.withAlpha (alphaA * 0.6f + 0.15f));
-        g.fillRoundedRectangle (static_cast<float>(x), trackY, sliderPos - static_cast<float>(x), trackHeight, 2.0f);
+        g.fillRoundedRectangle (startX, trackY, visualThumbX - startX, trackHeight, 2.0f);
 
         float alphaB = progress;
         g.setColour (t.crossfaderTrackB.withAlpha (alphaB * 0.6f + 0.15f));
-        g.fillRoundedRectangle (sliderPos, trackY, static_cast<float>(x + width) - sliderPos, trackHeight, 2.0f);
+        g.fillRoundedRectangle (visualThumbX, trackY, endX - visualThumbX, trackHeight, 2.0f);
 
-        // Solid, robust metallic DJ crossfader thumb
         const float thumbWidth = 24.0f;
         const float thumbHeight = 20.0f;
-        const float thumbX = sliderPos - (thumbWidth * 0.5f);
+        const float thumbX = visualThumbX - (thumbWidth * 0.5f);
         const float thumbY = static_cast<float>(y) + (static_cast<float>(height) - thumbHeight) * 0.5f;
 
         g.setColour (juce::Colours::black.withAlpha (0.4f));
@@ -320,31 +423,27 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float thumbWidth = 18.0f;
         const float thumbX = static_cast<float>(x) + (static_cast<float>(width) - thumbWidth) * 0.5f;
         
-        // Exact travel translation relative to the parent fader bounds (y=583, h=60.4)
-        float travelRange = maxSliderPos - minSliderPos;
-        float progress = (sliderPos - minSliderPos) / (travelRange > 0.0f ? travelRange : 1.0f);
-        progress = juce::jlimit (0.0f, 1.0f, progress);
-        
-        const float thumbY = static_cast<float>(y) + ((1.0f - progress) * (static_cast<float>(height) - thumbHeight));
+        // Exact travel translation relative to the parent fader bounds
+        float clampedThumbY = juce::jlimit (static_cast<float> (y), static_cast<float> (y + height - thumbHeight), static_cast<float> (sliderPos - thumbHeight * 0.5f));
 
         g.setColour (juce::Colours::black.withAlpha (0.4f));
-        g.fillRoundedRectangle (thumbX + 1.0f, thumbY + 1.5f, thumbWidth, thumbHeight, 1.5f);
+        g.fillRoundedRectangle (thumbX + 1.0f, clampedThumbY + 1.5f, thumbWidth, thumbHeight, 1.5f);
 
-        juce::ColourGradient silverBody (juce::Colour (0xFFECEFF1), thumbX, thumbY,
-                                         juce::Colour (0xFF90A4AE), thumbX, thumbY + thumbHeight,
+        juce::ColourGradient silverBody (juce::Colour (0xFFECEFF1), thumbX, clampedThumbY,
+                                         juce::Colour (0xFF90A4AE), thumbX, clampedThumbY + thumbHeight,
                                          false);
         g.setGradientFill (silverBody);
-        g.fillRoundedRectangle (thumbX, thumbY, thumbWidth, thumbHeight, 1.5f);
+        g.fillRoundedRectangle (thumbX, clampedThumbY, thumbWidth, thumbHeight, 1.5f);
 
         g.setColour (juce::Colours::white.withAlpha (0.7f));
-        g.drawRoundedRectangle (thumbX + 0.5f, thumbY + 0.5f, thumbWidth - 1.0f, thumbHeight - 1.0f, 1.5f, 1.0f);
+        g.drawRoundedRectangle (thumbX + 0.5f, clampedThumbY + 0.5f, thumbWidth - 1.0f, thumbHeight - 1.0f, 1.5f, 1.0f);
         g.setColour (juce::Colour (0xFF37474F).withAlpha (0.4f));
-        g.drawRoundedRectangle (thumbX, thumbY, thumbWidth, thumbHeight, 1.5f, 1.0f);
+        g.drawRoundedRectangle (thumbX, clampedThumbY, thumbWidth, thumbHeight, 1.5f, 1.0f);
 
         const float grooveHeight = 3.0f;
         const float grooveWidth = thumbWidth - 4.0f;
         const float grooveX = thumbX + 2.0f;
-        const float grooveY = thumbY + (thumbHeight - grooveHeight) * 0.5f;
+        const float grooveY = clampedThumbY + (thumbHeight - grooveHeight) * 0.5f;
 
         g.setColour (juce::Colour (0xFF212121));
         g.fillRect (grooveX, grooveY, grooveWidth, grooveHeight);

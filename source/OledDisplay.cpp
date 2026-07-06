@@ -172,7 +172,6 @@ void OledDisplay::paint (juce::Graphics& g)
             return { x1, y2, z2 };
         };
 
-        // Center 3D globe vertically inside the upper display area
         float globeCenterX = displayArea.getCentreX(); 
         float globeCenterY = displayArea.getY() + 120.0f; 
         float globeRadius = displayArea.getHeight() * 0.28f;   
@@ -438,20 +437,21 @@ void OledDisplay::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
         g.drawText (metaText, displayArea.removeFromTop (15.0f), juce::Justification::centred, true);
 
-        const float colWidth = 26.0f;
         const int numSegments = 16;
         const float segmentHeight = 8.0f;      
         const float segmentSpacing = 3.0f;     
         const float maxLaddersHeight = (numSegments * segmentHeight) + ((numSegments - 1) * segmentSpacing); 
         float fadersY = bounds.getHeight() - maxLaddersHeight - 25.0f; 
 
-        // Symmetrically aligned with the 1000 x 681 Preset Button centers
-        const float relativeCenters[8] = { 26.0f, 117.0f, 207.0f, 296.0f, 385.0f, 475.0f, 563.0f, 653.0f };
+        // Symmetrically aligned with the 680px width of the OLED screen container, looking "fat" and occupying full space
+        const float colWidth = 66.0f;
+        const float spacing = 16.0f;
+        const float startX = 20.0f;
 
         for (int i = 0; i < 8; ++i)
         {
-            float relativeCenter = relativeCenters[i];
-            auto colBounds = juce::Rectangle<float> (relativeCenter - colWidth * 0.5f, fadersY, colWidth, maxLaddersHeight);
+            float colX = startX + static_cast<float> (i) * (colWidth + spacing);
+            auto colBounds = juce::Rectangle<float> (colX, fadersY, colWidth, maxLaddersHeight);
             
             float faderVal = (processor.sceneA.faders[i] * (1.0f - morphVal)) + (processor.sceneB.faders[i] * morphVal);
             int activeSegments = static_cast<int> (std::round (faderVal * static_cast<float> (numSegments)));

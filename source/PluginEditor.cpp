@@ -443,10 +443,10 @@ void PluginEditor::resized()
     initButton.setBounds (73, 83, 33, 28);
 
     // Left Column small Knobs
-    rhythmMorphKnob.setBounds (52, 129, 32, 32);
-    restKnob.setBounds (52, 190, 32, 32);
-    legatoKnob.setBounds (52, 252, 32, 32);
-    rateKnob.setBounds (52, 314, 32, 32);
+    rhythmMorphKnob.setBounds (44, 121, 48, 48);
+    restKnob.setBounds (44, 182, 48, 48);
+    legatoKnob.setBounds (44, 244, 48, 48);
+    rateKnob.setBounds (44, 306, 48, 48);
     
     // Left Master Velocity Knob
     masterVelocityKnob.setBounds (26, 396, 84, 86);
@@ -458,10 +458,10 @@ void PluginEditor::resized()
     diceNavyButton.setBounds (930, 84, 33, 28);
 
     // Right Column small Knobs
-    entropyKnob.setBounds (910, 129, 32, 32);
-    harmonyKnob.setBounds (910, 190, 32, 32);
-    chaosKnob.setBounds (910, 252, 32, 32);
-    octavesKnob.setBounds (910, 314, 32, 32);
+    entropyKnob.setBounds (902, 121, 48, 48);
+    harmonyKnob.setBounds (902, 182, 48, 48);
+    chaosKnob.setBounds (902, 244, 48, 48);
+    octavesKnob.setBounds (902, 306, 48, 48);
     
     // Right Master Swing Knob
     masterSwingKnob.setBounds (884, 396, 84, 86);
