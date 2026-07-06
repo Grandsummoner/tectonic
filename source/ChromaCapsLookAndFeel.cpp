@@ -126,7 +126,7 @@ void ChromaCapsLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, i
         }
     }
 
-    // 4. Draw active LFO target value at exact continuous angle (prevents mid-range offset) [1.2.1]
+    // 4. Draw active LFO target value at exact continuous angle (prevents mid-range offset)
     float targetAngle = rotaryStartAngle + targetVal * (rotaryEndAngle - rotaryStartAngle);
     float targetLedX = centerX + ledRadius * std::sin (targetAngle) - ledDiameter * 0.5f;
     float targetLedY = centerY - ledRadius * std::cos (targetAngle) - ledDiameter * 0.5f;
@@ -444,13 +444,13 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         float endX = static_cast<float>(x + width);
         float totalW = static_cast<float>(width);
 
-        // Minimal safety margin of 2px so the thumb slides all the way to both edges, completely hiding the underlying track [1.2.0]
-        float margin = 2.0f;
+        // Minimal visual travel shortening by exactly 2% on both ends [1.2.2]
+        float margin = totalW * 0.02f;
         float activeStartX = startX + margin;
         float activeEndX = endX - margin;
         float activeW = totalW - (margin * 2.0f);
 
-        // Continuous Value Proportions mapping based strictly on slider getValue() values [1.2.0]
+        // Continuous Value Proportions mapping based strictly on slider getValue() values
         float progress = static_cast<float>((slider.getValue() - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()));
         progress = juce::jlimit (0.0f, 1.0f, progress);
 
@@ -464,8 +464,9 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         g.setColour (t.crossfaderTrackB.withAlpha (alphaB * 0.6f + 0.15f));
         g.fillRoundedRectangle (visualThumbX, trackY, endX - visualThumbX, trackHeight, 2.0f);
 
-        const float thumbWidth = 24.0f;
-        const float thumbHeight = 20.0f;
+        // Crossfader cap is drawn bigger and taller [1.2.2]
+        const float thumbWidth = 32.0f;  // Increased from 24.0f
+        const float thumbHeight = 32.0f; // Increased from 20.0f (reaches outside track bounds)
         const float thumbX = visualThumbX - (thumbWidth * 0.5f);
         const float thumbY = static_cast<float>(y) + (static_cast<float>(height) - thumbHeight) * 0.5f;
 
@@ -500,7 +501,7 @@ void ChromaCapsLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, i
         const float thumbWidth = 18.0f;
         const float thumbX = static_cast<float>(x) + (static_cast<float>(width) - thumbWidth) * 0.5f;
         
-        // Continuous Value Proportions mapping strictly via Slider value [1.2.0]
+        // Continuous Value Proportions mapping strictly via Slider value
         float progress = static_cast<float>((slider.getValue() - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()));
         progress = juce::jlimit (0.0f, 1.0f, progress);
 

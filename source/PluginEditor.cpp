@@ -99,26 +99,49 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     saveButton.onClick   = [this] { if (saveButton.getToggleState()) recallButton.setToggleState (false, juce::dontSendNotification); };
     recallButton.onClick = [this] { if (recallButton.getToggleState()) saveButton.setToggleState (false, juce::dontSendNotification); };
 
-    addAndMakeVisible (diceMeloButton); 
+    // Cleaned 2x2 focused grid resets to directly update targeted snaps [1.2.1]
     diceMeloButton.setComponentID ("dice_melody"); 
     diceMeloButton.setButtonText ("Melo"); 
     diceMeloButton.setLookAndFeel (&chromaLookAndFeel); 
-    diceMeloButton.onClick = [this] { if (initButton.getToggleState()) { processor.resetRhythm(); initFlashTimer = 24; initButton.setToggleState (false, juce::dontSendNotification); initButton.repaint(); } else { processor.diceMelody(); } };
+    diceMeloButton.onClick = [this] { 
+        if (initButton.getToggleState()) { 
+            processor.resetRhythm(); 
+            initFlashTimer = 24; 
+            initButton.setToggleState (false, juce::dontSendNotification); 
+            initButton.repaint(); 
+        } else { 
+            processor.diceMelody(); 
+        } 
+    };
+    addAndMakeVisible (diceMeloButton); 
     
-    addAndMakeVisible (diceArtiButton); 
     diceArtiButton.setComponentID ("dice_articulation"); 
     diceArtiButton.setButtonText ("Arti"); 
     diceArtiButton.setLookAndFeel (&chromaLookAndFeel); 
-    diceArtiButton.onClick = [this] { if (initButton.getToggleState()) { processor.apvts.getParameter(IDs::rest.getParamID())->setValueNotifyingHost(0.0f); processor.apvts.getParameter(IDs::legato.getParamID())->setValueNotifyingHost(0.5f); initFlashTimer = 24; initButton.setToggleState (false, juce::dontSendNotification); initButton.repaint(); } else { processor.diceArticulation(); } };
+    diceArtiButton.onClick = [this] { 
+        if (initButton.getToggleState()) { 
+            bool isSceneB = processor.isSceneBActiveAnchor.load();
+            SceneState& activeScene = isSceneB ? processor.sceneB : processor.sceneA;
+            activeScene.rest = 0.1f;    // Default Rest
+            activeScene.legato = 0.5f;  // Default Legato
+            initFlashTimer = 24; 
+            initButton.setToggleState (false, juce::dontSendNotification); 
+            initButton.repaint(); 
+        } else { 
+            processor.diceArticulation(); 
+        } 
+    };
+    addAndMakeVisible (diceArtiButton); 
     
-    addAndMakeVisible (diceTimeButton); 
     diceTimeButton.setComponentID ("dice_time"); 
     diceTimeButton.setButtonText ("Time"); 
     diceTimeButton.setLookAndFeel (&chromaLookAndFeel); 
     diceTimeButton.onClick = [this] { 
         if (initButton.getToggleState()) { 
-            processor.apvts.getParameter (IDs::rate.getParamID())->setValueNotifyingHost (2.0f / 3.0f); 
-            processor.apvts.getParameter (IDs::octaves.getParamID())->setValueNotifyingHost (3.0f / 6.0f); 
+            bool isSceneB = processor.isSceneBActiveAnchor.load();
+            SceneState& activeScene = isSceneB ? processor.sceneB : processor.sceneA;
+            activeScene.rate = 2.0f;     // Default 1/16
+            activeScene.octaves = 0.0f;  // Default 0 octaves
             processor.apvts.getParameter (IDs::cycleLength.getParamID())->setValueNotifyingHost (2.0f / 3.0f); 
             initFlashTimer = 24; 
             initButton.setToggleState (false, juce::dontSendNotification); 
@@ -127,12 +150,27 @@ PluginEditor::PluginEditor (PluginProcessor& p)
             processor.diceTime(); 
         } 
     };
+    addAndMakeVisible (diceTimeButton); 
     
-    addAndMakeVisible (diceNavyButton); 
     diceNavyButton.setComponentID ("dice_navy"); 
     diceNavyButton.setButtonText ("Navy"); 
     diceNavyButton.setLookAndFeel (&chromaLookAndFeel); 
-    diceNavyButton.onClick = [this] { if (initButton.getToggleState()) { processor.apvts.getParameter(IDs::rhythmMorph.getParamID())->setValueNotifyingHost(0.0f); processor.apvts.getParameter(IDs::entropy.getParamID())->setValueNotifyingHost(0.0f); processor.apvts.getParameter(IDs::harmony.getParamID())->setValueNotifyingHost(0.0f); processor.apvts.getParameter(IDs::chaos.getParamID())->setValueNotifyingHost(0.0f); initFlashTimer = 24; initButton.setToggleState (false, juce::dontSendNotification); initButton.repaint(); } else { processor.diceNavy(); } };
+    diceNavyButton.onClick = [this] { 
+        if (initButton.getToggleState()) { 
+            bool isSceneB = processor.isSceneBActiveAnchor.load();
+            SceneState& activeScene = isSceneB ? processor.sceneB : processor.sceneA;
+            activeScene.rhythmMorph = 0.0f;
+            activeScene.entropy = 0.0f;
+            activeScene.harmony = 0.0f;
+            activeScene.chaos = 0.0f;
+            initFlashTimer = 24; 
+            initButton.setToggleState (false, juce::dontSendNotification); 
+            initButton.repaint(); 
+        } else { 
+            processor.diceNavy(); 
+        } 
+    };
+    addAndMakeVisible (diceNavyButton); 
 
     sceneAButton.onClick = [this] {
         if (initButton.getToggleState()) { processor.clearSceneA(); sceneAFlashTimer = 24; initButton.setToggleState (false, juce::dontSendNotification); initButton.repaint(); }
@@ -238,6 +276,25 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     for (int i = 0; i < 8; ++i) {
         faders[i]->setDoubleClickReturnValue (true, 0.5f); // Default 50% probability
     }
+
+    // Connect slider callbacks to automatically update active scene state [1.2.2]
+    rhythmMorphKnob.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.rhythmMorph = static_cast<float>(rhythmMorphKnob.getValue()); else processor.sceneA.rhythmMorph = static_cast<float>(rhythmMorphKnob.getValue()); } };
+    restKnob.onValueChange        = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.rest = static_cast<float>(restKnob.getValue()); else processor.sceneA.rest = static_cast<float>(restKnob.getValue()); } };
+    legatoKnob.onValueChange      = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.legato = static_cast<float>(legatoKnob.getValue()); else processor.sceneA.legato = static_cast<float>(legatoKnob.getValue()); } };
+    rateKnob.onValueChange        = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.rate = static_cast<float>(rateKnob.getValue()); else processor.sceneA.rate = static_cast<float>(rateKnob.getValue()); } };
+    entropyKnob.onValueChange     = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.entropy = static_cast<float>(entropyKnob.getValue()); else processor.sceneA.entropy = static_cast<float>(entropyKnob.getValue()); } };
+    harmonyKnob.onValueChange     = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.harmony = static_cast<float>(harmonyKnob.getValue()); else processor.sceneA.harmony = static_cast<float>(harmonyKnob.getValue()); } };
+    chaosKnob.onValueChange       = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.chaos = static_cast<float>(chaosKnob.getValue()); else processor.sceneA.chaos = static_cast<float>(chaosKnob.getValue()); } };
+    octavesKnob.onValueChange     = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.octaves = static_cast<float>(octavesKnob.getValue()); else processor.sceneA.octaves = static_cast<float>(octavesKnob.getValue()); } };
+
+    fader1.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[0] = static_cast<float>(fader1.getValue()); else processor.sceneA.faders[0] = static_cast<float>(fader1.getValue()); } };
+    fader2.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[1] = static_cast<float>(fader2.getValue()); else processor.sceneA.faders[1] = static_cast<float>(fader2.getValue()); } };
+    fader3.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[2] = static_cast<float>(fader3.getValue()); else processor.sceneA.faders[2] = static_cast<float>(fader3.getValue()); } };
+    fader4.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[3] = static_cast<float>(fader4.getValue()); else processor.sceneA.faders[3] = static_cast<float>(fader4.getValue()); } };
+    fader5.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[4] = static_cast<float>(fader5.getValue()); else processor.sceneA.faders[4] = static_cast<float>(fader5.getValue()); } };
+    fader6.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[5] = static_cast<float>(fader6.getValue()); else processor.sceneA.faders[5] = static_cast<float>(fader6.getValue()); } };
+    fader7.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[6] = static_cast<float>(fader7.getValue()); else processor.sceneA.faders[6] = static_cast<float>(fader7.getValue()); } };
+    fader8.onValueChange = [this] { if (!isUpdatingProgrammatically) { if (processor.isSceneBActiveAnchor.load()) processor.sceneB.faders[7] = static_cast<float>(fader8.getValue()); else processor.sceneA.faders[7] = static_cast<float>(fader8.getValue()); } };
 
     setResizable (false, false); 
     setSize (1000, 681); // Matches physical artwork dimension 
@@ -661,63 +718,24 @@ void PluginEditor::timerCallback()
     bool isSceneB = processor.isSceneBActiveAnchor.load();
     SceneState& activeScene = isSceneB ? processor.sceneB : processor.sceneA;
 
-    // Safe getThumbBeingDragged check to strictly monitor active dragging
-    if (rhythmMorphKnob.getThumbBeingDragged() >= 0) {
-        activeScene.rhythmMorph = static_cast<float>(rhythmMorphKnob.getValue());
-    } else {
-        rhythmMorphKnob.setValue (interpolate (processor.sceneA.rhythmMorph, processor.sceneB.rhythmMorph), juce::dontSendNotification);
-    }
+    // Direct programmatic updates are flagged to avoid value-change listener triggers [1.2.2]
+    isUpdatingProgrammatically = true;
 
-    if (restKnob.getThumbBeingDragged() >= 0) {
-        activeScene.rest = static_cast<float>(restKnob.getValue());
-    } else {
-        restKnob.setValue (interpolate (processor.sceneA.rest, processor.sceneB.rest), juce::dontSendNotification);
-    }
-
-    if (legatoKnob.getThumbBeingDragged() >= 0) {
-        activeScene.legato = static_cast<float>(legatoKnob.getValue());
-    } else {
-        legatoKnob.setValue (interpolate (processor.sceneA.legato, processor.sceneB.legato), juce::dontSendNotification);
-    }
-
-    if (rateKnob.getThumbBeingDragged() >= 0) {
-        activeScene.rate = static_cast<float>(rateKnob.getValue());
-    } else {
-        rateKnob.setValue (interpolate (processor.sceneA.rate, processor.sceneB.rate), juce::dontSendNotification);
-    }
-
-    if (entropyKnob.getThumbBeingDragged() >= 0) {
-        activeScene.entropy = static_cast<float>(entropyKnob.getValue());
-    } else {
-        entropyKnob.setValue (interpolate (processor.sceneA.entropy, processor.sceneB.entropy), juce::dontSendNotification);
-    }
-
-    if (harmonyKnob.getThumbBeingDragged() >= 0) {
-        activeScene.harmony = static_cast<float>(harmonyKnob.getValue());
-    } else {
-        harmonyKnob.setValue (interpolate (processor.sceneA.harmony, processor.sceneB.harmony), juce::dontSendNotification);
-    }
-
-    if (chaosKnob.getThumbBeingDragged() >= 0) {
-        activeScene.chaos = static_cast<float>(chaosKnob.getValue());
-    } else {
-        chaosKnob.setValue (interpolate (processor.sceneA.chaos, processor.sceneB.chaos), juce::dontSendNotification);
-    }
-
-    if (octavesKnob.getThumbBeingDragged() >= 0) {
-        activeScene.octaves = static_cast<float>(octavesKnob.getValue());
-    } else {
-        octavesKnob.setValue (interpolate (processor.sceneA.octaves, processor.sceneB.octaves), juce::dontSendNotification);
-    }
+    rhythmMorphKnob.setValue (interpolate (processor.sceneA.rhythmMorph, processor.sceneB.rhythmMorph), juce::dontSendNotification);
+    restKnob.setValue (interpolate (processor.sceneA.rest, processor.sceneB.rest), juce::dontSendNotification);
+    legatoKnob.setValue (interpolate (processor.sceneA.legato, processor.sceneB.legato), juce::dontSendNotification);
+    rateKnob.setValue (interpolate (processor.sceneA.rate, processor.sceneB.rate), juce::dontSendNotification);
+    entropyKnob.setValue (interpolate (processor.sceneA.entropy, processor.sceneB.entropy), juce::dontSendNotification);
+    harmonyKnob.setValue (interpolate (processor.sceneA.harmony, processor.sceneB.harmony), juce::dontSendNotification);
+    chaosKnob.setValue (interpolate (processor.sceneA.chaos, processor.sceneB.chaos), juce::dontSendNotification);
+    octavesKnob.setValue (interpolate (processor.sceneA.octaves, processor.sceneB.octaves), juce::dontSendNotification);
 
     juce::Slider* faders[] = { &fader1, &fader2, &fader3, &fader4, &fader5, &fader6, &fader7, &fader8 };
     for (int i = 0; i < 8; ++i) {
-        if (faders[i]->getThumbBeingDragged() >= 0) {
-            activeScene.faders[i] = static_cast<float>(faders[i]->getValue());
-        } else {
-            faders[i]->setValue (interpolate (processor.sceneA.faders[i], processor.sceneB.faders[i]), juce::dontSendNotification);
-        }
+        faders[i]->setValue (interpolate (processor.sceneA.faders[i], processor.sceneB.faders[i]), juce::dontSendNotification);
     }
+
+    isUpdatingProgrammatically = false;
 
     // OLED Parameter HUD Overlay Triggering [1.2.0]
     juce::Slider* smallKnobs[] = { &rhythmMorphKnob, &restKnob, &legatoKnob, &rateKnob, &entropyKnob, &harmonyKnob, &chaosKnob, &octavesKnob };
