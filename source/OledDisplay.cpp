@@ -79,6 +79,7 @@ void OledDisplay::paint (juce::Graphics& g)
     float width = bounds.getWidth();   
     float height = bounds.getHeight(); 
 
+    // Always clear the background with the solid dark color
     g.fillAll (juce::Colour (0xFF05070A));
 
     auto displayArea = bounds.reduced (16.0f);
@@ -91,9 +92,16 @@ void OledDisplay::paint (juce::Graphics& g)
     if (themeIdx == 1)      themeColor = juce::Colour (0xFFECEFF1); // Theme 1 (Monochrome): White/Silver
     else if (themeIdx == 2) themeColor = juce::Colour (0xFF00FF66); // Theme 2 (Matrix): Neon Green
 
+    float morphVal = *processor.apvts.getRawParameterValue (IDs::morph.getParamID());
+    const int activeStep = processor.currentStep.load();          
+    const bool isPlaying = processor.isCurrentlyPlayingUI.load(); 
+
+    // =====================================================================
+    // 1. DYNAMIC VIEWPORT (UPPER REGION: y = 0 to 225)
+    // =====================================================================
     if (isOverlayActive)
     {
-        // 1. Calculate dynamic absolute LFO modulated progress directly inside OledDisplay [1.2.3]
+        // Calculate dynamic absolute LFO modulated progress directly inside OledDisplay [1.2.3]
         float lfoProgress = 0.0f;
         int lfoIdx = -1;
         if (activeParamName == "Rhythm Morph")  lfoIdx = 0;
@@ -123,14 +131,14 @@ void OledDisplay::paint (juce::Graphics& g)
             }
         }
 
-        // 2. Draw subtle diagnostic background grid
+        // Draw subtle diagnostic background grid in the upper viewport only
         g.setColour (themeColor.withAlpha (0.04f));
         for (float gridX = displayArea.getX(); gridX < displayArea.getRight(); gridX += 16.0f)
-            g.drawVerticalLine (static_cast<int> (gridX), displayArea.getY(), displayArea.getBottom());
-        for (float gridY = displayArea.getY(); gridY < displayArea.getBottom(); gridY += 16.0f)
+            g.drawVerticalLine (static_cast<int> (gridX), displayArea.getY(), 225.0f);
+        for (float gridY = displayArea.getY(); gridY < 225.0f; gridY += 16.0f)
             g.drawHorizontalLine (static_cast<int> (gridY), displayArea.getX(), displayArea.getRight());
 
-        // 3. Draw partition lines and upper system metrics
+        // Draw partition lines and upper system metrics
         float startY = displayArea.getY();
         g.setColour (themeColor.withAlpha (0.4f));
         g.drawHorizontalLine (static_cast<int> (startY + 18.0f), displayArea.getX(), displayArea.getRight());
@@ -140,10 +148,10 @@ void OledDisplay::paint (juce::Graphics& g)
         g.drawText ("PARAMETER OVERLAY", displayArea.getX(), startY, 150, 15, juce::Justification::left);
         g.drawText ("SYSTEM MONITOR // ACTIVE", displayArea.getX(), startY, displayArea.getWidth(), 15, juce::Justification::right);
 
-        // 4. Render Large Parameter Title and Oversized Readout with custom string formatting [1.2.3]
-        float contentY = startY + 28.0f;
+        // Render Large Parameter Title and Oversized Readout with custom string formatting [1.2.3]
+        float contentY = startY + 26.0f;
         g.setColour (juce::Colours::white);
-        g.setFont (juce::FontOptions (16.0f, juce::Font::bold));
+        g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
         g.drawText (activeParamName.toUpperCase(), displayArea.getX() + 10, contentY, 300, 20, juce::Justification::left);
 
         // Format continuous inputs based on parameter ranges
@@ -175,22 +183,22 @@ void OledDisplay::paint (juce::Graphics& g)
         }
         
         g.setColour (themeColor);
-        g.setFont (juce::FontOptions ("Courier New", 26.0f, juce::Font::bold));
-        g.drawText (valStr, displayArea.getX(), contentY - 6.0f, displayArea.getWidth() - 10.0f, 30, juce::Justification::right);
+        g.setFont (juce::FontOptions ("Courier New", 24.0f, juce::Font::bold));
+        g.drawText (valStr, displayArea.getX(), contentY - 4.0f, displayArea.getWidth() - 10.0f, 30, juce::Justification::right);
 
-        // 5. Render Dual Horizontal Segmented LED Bars
+        // Render Dual Horizontal Segmented LED Bars (Option A: 45 micro-LED segments)
         float baseBarY = contentY + 28.0f;
         g.setColour (juce::Colours::white.withAlpha (0.45f));
         g.setFont (juce::FontOptions ("Courier New", 10.0f, juce::Font::bold));
         g.drawText ("[BASE]", displayArea.getX() + 10, baseBarY, 50, 12, juce::Justification::left);
 
         float barStartX = displayArea.getX() + 70.0f;
-        int numSegs = 30;
-        float segW = 10.0f;
+        int numSegs = 45;
+        float segW = 10.5f;
         float segH = 8.0f;
         float segG = 2.0f;
         
-        // Render top BASE segment bar
+        // Render top BASE segment bar (Option A)
         int litSegsBase = static_cast<int> (std::round (activeParamValue * numSegs));
         for (int s = 0; s < numSegs; ++s)
         {
@@ -204,7 +212,7 @@ void OledDisplay::paint (juce::Graphics& g)
             g.fillRect (segRect);
         }
 
-        // Render bottom LFO segment bar
+        // Render bottom LFO segment bar (Option A)
         float lfoBarY = baseBarY + 16.0f;
         g.setColour (juce::Colours::white.withAlpha (0.45f));
         g.drawText ("[LFO ]", displayArea.getX() + 10, lfoBarY, 50, 12, juce::Justification::left);
@@ -223,9 +231,9 @@ void OledDisplay::paint (juce::Graphics& g)
             g.fillRect (segRect);
         }
 
-        // 6. Draw visual framing frames at the bottom
-        float frameY = lfoBarY + 26.0f;
-        float frameH = 48.0f;
+        // Draw visual framing boxes at the bottom of the overlay region (y = 165 to 205)
+        float frameY = 165.0f;
+        float frameH = 40.0f;
         
         // Box A: Focus targeted details
         juce::Rectangle<float> boxA (displayArea.getX() + 10.0f, frameY, 280.0f, frameH);
@@ -237,8 +245,8 @@ void OledDisplay::paint (juce::Graphics& g)
         g.setColour (juce::Colours::white.withAlpha (0.80f));
         g.setFont (juce::FontOptions ("Courier New", 9.0f, juce::Font::bold));
         juce::String sideText = processor.isSceneBActiveAnchor.load() ? "SCENE B (FOCUSED)" : "SCENE A (FOCUSED)";
-        g.drawText (" TARGET SNAP : " + sideText, boxA.getX() + 5.0f, boxA.getY() + 8.0f, boxA.getWidth() - 10.0f, 12, juce::Justification::left);
-        g.drawText (" INPUT DRAG  : USER CAPTURE ACTIVE", boxA.getX() + 5.0f, boxA.getY() + 24.0f, boxA.getWidth() - 10.0f, 12, juce::Justification::left);
+        g.drawText (" TARGET SNAP : " + sideText, boxA.getX() + 5.0f, boxA.getY() + 6.0f, boxA.getWidth() - 10.0f, 12, juce::Justification::left);
+        g.drawText (" INPUT DRAG  : USER CAPTURE ACTIVE", boxA.getX() + 5.0f, boxA.getY() + 20.0f, boxA.getWidth() - 10.0f, 12, juce::Justification::left);
 
         // Box B: Sat LFO metrics
         juce::Rectangle<float> boxB (displayArea.getX() + 300.0f, frameY, displayArea.getWidth() - 310.0f, frameH);
@@ -248,10 +256,10 @@ void OledDisplay::paint (juce::Graphics& g)
         g.drawRoundedRectangle (boxB, 2.0f, 1.0f);
         
         juce::String lfoStatusText = (activeLfoVibe == "Off") ? "ROUTING INACTIVE" : "SATELLITE LFO SYNCED";
-        g.drawText (" LFO ROUTING : " + lfoStatusText, boxB.getX() + 5.0f, boxB.getY() + 8.0f, boxB.getWidth() - 10.0f, 12, juce::Justification::left);
-        g.drawText (" TEMPO RATE  : " + activeLfoVibe, boxB.getX() + 5.0f, boxB.getY() + 24.0f, boxB.getWidth() - 10.0f, 12, juce::Justification::left);
+        g.drawText (" LFO ROUTING : " + lfoStatusText, boxB.getX() + 5.0f, boxB.getY() + 6.0f, boxB.getWidth() - 10.0f, 12, juce::Justification::left);
+        g.drawText (" TEMPO RATE  : " + activeLfoVibe, boxB.getX() + 5.0f, boxB.getY() + 20.0f, boxB.getWidth() - 10.0f, 12, juce::Justification::left);
 
-        // 7. Draw clean high-tech corner brackets around the viewport boundaries
+        // Draw clean high-tech corner brackets around the overlay viewport boundaries
         g.setColour (themeColor.withAlpha (0.5f));
         float thick = 2.0f;
         float size = 8.0f;
@@ -264,15 +272,12 @@ void OledDisplay::paint (juce::Graphics& g)
         };
         drawBracket (displayArea.getX(), displayArea.getY(), true, true);
         drawBracket (displayArea.getRight(), displayArea.getY(), false, true);
-        drawBracket (displayArea.getX(), displayArea.getBottom(), true, false);
-        drawBracket (displayArea.getRight(), displayArea.getBottom(), false, false);
+        drawBracket (displayArea.getX(), 215.0f, true, false);
+        drawBracket (displayArea.getRight(), 215.0f, false, false);
     }
     else
     {
-        float morphVal = *processor.apvts.getRawParameterValue (IDs::morph.getParamID());
-        const int activeStep = processor.currentStep.load();          
-        const bool isPlaying = processor.isCurrentlyPlayingUI.load(); 
-
+        // DEFAULT SCREEN UPPER STATE: Globe + System Metadata Bar
         int rootKeyIdx = juce::jlimit (0, 11, static_cast<int> (*processor.apvts.getRawParameterValue (IDs::rootKey.getParamID())));
         juce::StringArray keys { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B" }, scales { "Major", "Natural Minor", "Pentatonic Minor", "Pentatonic Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Harmonic Minor", "Melodic Minor" };
         juce::String keyStr = keys[rootKeyIdx];
@@ -306,6 +311,11 @@ void OledDisplay::paint (juce::Graphics& g)
 
         juce::String metaText = "SYSTEM STATUS: ACTIVE | KEY: " + keyStr + " | SCALE: " + scaleStr.toUpperCase() + " | TEMPO: " + tempoSourceText + " | VOICING: " + voiceStr;
 
+        // Shifted status bar parameters to absolute top of OLED inside box boundary
+        g.setColour (juce::Colour (0xFF00FF66).withAlpha (0.85f)); 
+        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        g.drawText (metaText, displayArea.withY (displayArea.getY() + 8.0f).withHeight (15.0f), juce::Justification::centred, true);
+
         struct Point3D { float x, y, z; };
         std::vector<Point3D> vertices;
 
@@ -336,9 +346,10 @@ void OledDisplay::paint (juce::Graphics& g)
             return { x1, y2, z2 };
         };
 
+        // Globe sized down and centered within upper viewport limits to prevent overlap with VU ladders [2]
         float globeCenterX = displayArea.getCentreX(); 
-        float globeCenterY = displayArea.getY() + 110.0f; // Adjusted slightly upward for larger globe (was + 120.0f)
-        float globeRadius = displayArea.getHeight() * 0.38f; // Sized up from 0.28f to 0.38f for bigger globe  
+        float globeCenterY = displayArea.getY() + 95.0f;      // Centered cleanly between system text and VU meters
+        float globeRadius = displayArea.getHeight() * 0.30f;  // Sized proportionally (approx 86px) to maintain padding
         float cameraDistance = 2.2f;
 
         std::vector<juce::Point<float>> projectedPoints;
@@ -499,32 +510,6 @@ void OledDisplay::paint (juce::Graphics& g)
 
         if (state != nullptr)
         {
-            if (timeMs - state->lastCameoTriggerTime >= state->nextCameoInterval)
-            {
-                state->lastCameoTriggerTime = timeMs;
-                
-                juce::Random randEngine;
-                state->nextCameoInterval = 120000.0 + randEngine.nextDouble() * 120000.0; 
-                
-                int spawnCount = (randEngine.nextFloat() < 0.20f) ? 2 : 1; 
-                for (int k = 0; k < spawnCount; ++k)
-                {
-                    CameoState::ActiveCameo cameo;
-                    cameo.type = randEngine.nextInt (3); 
-                    cameo.startTimeMs = timeMs;
-                    cameo.durationMs = 5000.0 + randEngine.nextDouble() * 7000.0; 
-                    cameo.trajectoryPattern = randEngine.nextInt (3); 
-                    cameo.arcAmplitude = 15.0f + randEngine.nextFloat() * 25.0f;
-                    
-                    cameo.startX = (k == 1 || randEngine.nextBool()) ? -30.0f : (width + 30.0f);
-                    cameo.targetX = (cameo.startX < 0.0f) ? (width + 30.0f) : -30.0f;
-                    cameo.startY = displayArea.getY() + randEngine.nextFloat() * displayArea.getHeight() * 0.7f;
-                    cameo.targetY = displayArea.getY() + randEngine.nextFloat() * displayArea.getHeight() * 0.7f;
-                    
-                    state->activeCameos.push_back (cameo);
-                }
-            }
-
             for (auto it = state->activeCameos.begin(); it != state->activeCameos.end();)
             {
                 double elapsed = timeMs - it->startTimeMs;
@@ -590,54 +575,50 @@ void OledDisplay::paint (juce::Graphics& g)
                 }
             }
         }
+    }
 
-        // REMOVED program-stamp drawn inside the OLED box (NAVY-ARP MONITOR title is now stamped on parent editor) [1.2.3]
+    // =====================================================================
+    // 2. PERSISTENT LOWER VIEWPORT (VU METERS: y = 225 to 320)
+    // =====================================================================
+    const int numSegments = 16;
+    const float segmentHeight = 5.0f;      // Halved segment height (was 10.0f) [2]
+    const float segmentSpacing = 1.0f;     // Closer segment spacing (was 2.0f) [2]
+    const float maxLaddersHeight = (numSegments * segmentHeight) + ((numSegments - 1) * segmentSpacing); 
+    float fadersY = bounds.getHeight() - maxLaddersHeight; // Ends exactly at y = 320.0f [2]
 
-        // Shifted status bar parameters to absolute top of OLED inside box boundary
-        g.setColour (juce::Colour (0xFF00FF66).withAlpha (0.85f)); 
-        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
-        g.drawText (metaText, displayArea.withY (displayArea.getY() + 8.0f).withHeight (15.0f), juce::Justification::centred, true);
+    // Continuous, fat, gapless columns completely filling the 680px width (8 columns * 85px = 680px) [2]
+    const float colWidth = 85.0f;
+    const float spacing = 0.0f;
+    const float startX = 0.0f;
 
-        const int numSegments = 16;
-        const float segmentHeight = 5.0f;      // Halved segment height (was 10.0f)
-        const float segmentSpacing = 1.0f;     // Closer segment spacing (was 2.0f)
-        const float maxLaddersHeight = (numSegments * segmentHeight) + ((numSegments - 1) * segmentSpacing); 
-        float fadersY = bounds.getHeight() - maxLaddersHeight; // Ends exactly at the bottom border of the OLED box (320.0f)
+    for (int i = 0; i < 8; ++i)
+    {
+        float colX = startX + static_cast<float> (i) * (colWidth + spacing);
+        auto colBounds = juce::Rectangle<float> (colX, fadersY, colWidth, maxLaddersHeight);
+        
+        float faderVal = (processor.sceneA.faders[i] * (1.0f - morphVal)) + (processor.sceneB.faders[i] * morphVal);
+        int activeSegments = static_cast<int> (std::round (faderVal * static_cast<float> (numSegments)));
 
-        // Continuous, fat, gapless columns completely filling the 680px width (8 columns * 85px = 680px)
-        const float colWidth = 85.0f;
-        const float spacing = 0.0f;
-        const float startX = 0.0f;
+        const bool isActiveStep = isPlaying && (i == activeStep);
 
-        for (int i = 0; i < 8; ++i)
+        for (int seg = 0; seg < numSegments; ++seg)
         {
-            float colX = startX + static_cast<float> (i) * (colWidth + spacing);
-            auto colBounds = juce::Rectangle<float> (colX, fadersY, colWidth, maxLaddersHeight);
-            
-            float faderVal = (processor.sceneA.faders[i] * (1.0f - morphVal)) + (processor.sceneB.faders[i] * morphVal);
-            int activeSegments = static_cast<int> (std::round (faderVal * static_cast<float> (numSegments)));
+            float segY = colBounds.getY() + maxLaddersHeight - ((seg + 1) * (segmentHeight + segmentSpacing));
+            auto segmentRect = juce::Rectangle<float> (colBounds.getX() + 2.0f, segY, colBounds.getWidth() - 4.0f, segmentHeight);
 
-            const bool isActiveStep = isPlaying && (i == activeStep);
-
-            for (int seg = 0; seg < numSegments; ++seg)
+            if (seg < activeSegments)
             {
-                float segY = colBounds.getY() + maxLaddersHeight - ((seg + 1) * (segmentHeight + segmentSpacing));
-                auto segmentRect = juce::Rectangle<float> (colBounds.getX() + 2.0f, segY, colBounds.getWidth() - 4.0f, segmentHeight);
-
-                if (seg < activeSegments)
-                {
-                    if (isActiveStep)
-                        g.setColour (juce::Colour (0xFFFF4500)); 
-                    else
-                        g.setColour (juce::Colour (0xFF441105).withAlpha (0.75f)); 
-                }
+                if (isActiveStep)
+                    g.setColour (juce::Colour (0xFFFF4500)); 
                 else
-                {
-                    g.setColour (juce::Colour (0xFF111317).withAlpha (0.65f));
-                }
-
-                g.fillRect (segmentRect);
+                    g.setColour (juce::Colour (0xFF441105).withAlpha (0.75f)); 
             }
+            else
+            {
+                g.setColour (juce::Colour (0xFF111317).withAlpha (0.65f));
+            }
+
+            g.fillRect (segmentRect);
         }
     }
 }

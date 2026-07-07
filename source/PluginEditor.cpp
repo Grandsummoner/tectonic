@@ -848,7 +848,8 @@ void PluginEditor::timerCallback()
 
     if (masterVelocityKnob.getThumbBeingDragged() >= 0)
     {
-        oledDisplay.showParameterOverlay ("BPM", static_cast<float> (masterVelocityKnob.getValue()), "Off");
+        // Parameter overlay corrected to read "Note Density" instead of "BPM"
+        oledDisplay.showParameterOverlay ("Note Density", static_cast<float> (masterVelocityKnob.getValue()), "Off");
     }
 
     if (masterSwingKnob.getThumbBeingDragged() >= 0)
