@@ -568,37 +568,106 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     
     if (xml != nullptr)
     {
+        // 1. Serialize active workspace focus and presence flags
+        xml->setAttribute ("isSceneBActiveAnchor", isSceneBActiveAnchor.load());
+        xml->setAttribute ("hasSceneA", hasSceneA);
+        xml->setAttribute ("hasSceneB", hasSceneB);
+
+        // 2. Serialize current active Scene A profile
+        auto* activeSceneANode = xml->createNewChildElement ("CURRENT_SCENE_A");
+        if (activeSceneANode != nullptr)
+        {
+            activeSceneANode->setAttribute ("morph", sceneA.rhythmMorph);
+            activeSceneANode->setAttribute ("rest", sceneA.rest);
+            activeSceneANode->setAttribute ("legato", sceneA.legato);
+            activeSceneANode->setAttribute ("rate", sceneA.rate);
+            activeSceneANode->setAttribute ("entropy", sceneA.entropy);
+            activeSceneANode->setAttribute ("harmony", sceneA.harmony);
+            activeSceneANode->setAttribute ("chaos", sceneA.chaos);
+            activeSceneANode->setAttribute ("octaves", sceneA.octaves);
+            for (int f = 0; f < 8; ++f) 
+                activeSceneANode->setAttribute ("fader_" + juce::String (f), sceneA.faders[f]);
+            for (int l = 0; l < 8; ++l) {
+                activeSceneANode->setAttribute ("lfo_r_" + juce::String (l), sceneA.lfoRates[l]);
+                activeSceneANode->setAttribute ("lfo_d_" + juce::String (l), sceneA.lfoDepths[l]);
+            }
+        }
+
+        // 3. Serialize current active Scene B profile
+        auto* activeSceneBNode = xml->createNewChildElement ("CURRENT_SCENE_B");
+        if (activeSceneBNode != nullptr)
+        {
+            activeSceneBNode->setAttribute ("morph", sceneB.rhythmMorph);
+            activeSceneBNode->setAttribute ("rest", sceneB.rest);
+            activeSceneBNode->setAttribute ("legato", sceneB.legato);
+            activeSceneBNode->setAttribute ("rate", sceneB.rate);
+            activeSceneBNode->setAttribute ("entropy", sceneB.entropy);
+            activeSceneBNode->setAttribute ("harmony", sceneB.harmony);
+            activeSceneBNode->setAttribute ("chaos", sceneB.chaos);
+            activeSceneBNode->setAttribute ("octaves", sceneB.octaves);
+            for (int f = 0; f < 8; ++f) 
+                activeSceneBNode->setAttribute ("fader_" + juce::String (f), sceneB.faders[f]);
+            for (int l = 0; l < 8; ++l) {
+                activeSceneBNode->setAttribute ("lfo_r_" + juce::String (l), sceneB.lfoRates[l]);
+                activeSceneBNode->setAttribute ("lfo_d_" + juce::String (l), sceneB.lfoDepths[l]);
+            }
+        }
+
+        // 4. Serialize scene presets (Slot matrices)
         auto* presetsNodeA = xml->createNewChildElement ("SCENE_A_PRESETS");
         auto* presetsNodeB = xml->createNewChildElement ("SCENE_B_PRESETS");
         
         if (presetsNodeA != nullptr && presetsNodeB != nullptr)
         {
-            for (int i = 0; i < 8; ++i) {
+            for (int i = 0; i < 8; ++i) 
+            {
                 auto* childA = presetsNodeA->createNewChildElement ("SLOT_" + juce::String (i)); 
                 if (childA != nullptr) {
                     childA->setAttribute ("saved", sceneASlotsSaved[i]);
                     if (sceneASlotsSaved[i]) {
-                        childA->setAttribute ("morph", sceneAPresets[i].rhythmMorph); childA->setAttribute ("rest", sceneAPresets[i].rest); childA->setAttribute ("legato", sceneAPresets[i].legato);
-                        childA->setAttribute ("rate", sceneAPresets[i].rate); childA->setAttribute ("entropy", sceneAPresets[i].entropy); childA->setAttribute ("harmony", sceneAPresets[i].harmony);
-                        childA->setAttribute ("chaos", sceneAPresets[i].chaos); childA->setAttribute ("octaves", sceneAPresets[i].octaves);
-                        for (int f = 0; f < 8; ++f) childA->setAttribute ("fader_" + juce::String (f), sceneAPresets[i].faders[f]);
-                        for (int l = 0; l < 8; ++l) { childA->setAttribute ("lfo_r_" + juce::String (l), sceneAPresets[i].lfoRates[l]); childA->setAttribute ("lfo_d_" + juce::String (l), sceneAPresets[i].lfoDepths[l]); }
+                        childA->setAttribute ("morph", sceneAPresets[i].rhythmMorph); 
+                        childA->setAttribute ("rest", sceneAPresets[i].rest); 
+                        childA->setAttribute ("legato", sceneAPresets[i].legato);
+                        childA->setAttribute ("rate", sceneAPresets[i].rate); 
+                        childA->setAttribute ("entropy", sceneAPresets[i].entropy); 
+                        childA->setAttribute ("harmony", sceneAPresets[i].harmony);
+                        childA->setAttribute ("chaos", sceneAPresets[i].chaos); 
+                        childA->setAttribute ("octaves", sceneAPresets[i].octaves);
+                        for (int f = 0; f < 8; ++f) 
+                            childA->setAttribute ("fader_" + juce::String (f), sceneAPresets[i].faders[f]);
+                        for (int l = 0; l < 8; ++l) { 
+                            childA->setAttribute ("lfo_r_" + juce::String (l), sceneAPresets[i].lfoRates[l]); 
+                            childA->setAttribute ("lfo_d_" + juce::String (l), sceneAPresets[i].lfoDepths[l]); 
+                        }
                     }
                 }
+                
                 auto* childB = presetsNodeB->createNewChildElement ("SLOT_" + juce::String (i)); 
                 if (childB != nullptr) {
                     childB->setAttribute ("saved", sceneBSlotsSaved[i]);
                     if (sceneBSlotsSaved[i]) {
-                        childB->setAttribute ("morph", sceneBPresets[i].rhythmMorph); childB->setAttribute ("rest", sceneBPresets[i].rest); childB->setAttribute ("legato", sceneBPresets[i].legato);
-                        childB->setAttribute ("rate", sceneBPresets[i].rate); childB->setAttribute ("entropy", sceneBPresets[i].entropy); childB->setAttribute ("harmony", sceneBPresets[i].harmony);
-                        childB->setAttribute ("chaos", sceneBPresets[i].chaos); childB->setAttribute ("octaves", sceneBPresets[i].octaves);
-                        for (int f = 0; f < 8; ++f) sceneBPresets[i].faders[f] = static_cast<float> (childB->getDoubleAttribute ("fader_" + juce::String (f)));
-                        for (int l = 0; l < 8; ++l) { sceneBPresets[i].lfoRates[l] = childB->getIntAttribute ("lfo_r_" + juce::String (l)); sceneBPresets[i].lfoDepths[l] = static_cast<float> (childB->getDoubleAttribute ("lfo_d_" + juce::String (l))); }
+                        childB->setAttribute ("morph", sceneBPresets[i].rhythmMorph); 
+                        childB->setAttribute ("rest", sceneBPresets[i].rest); 
+                        childB->setAttribute ("legato", sceneBPresets[i].legato);
+                        childB->setAttribute ("rate", sceneBPresets[i].rate); 
+                        childB->setAttribute ("entropy", sceneBPresets[i].entropy); 
+                        childB->setAttribute ("harmony", sceneBPresets[i].harmony);
+                        childB->setAttribute ("chaos", sceneBPresets[i].chaos); 
+                        childB->setAttribute ("octaves", sceneBPresets[i].octaves);
+                        
+                        // FIXED: Replaced read-assignment with setAttribute for Scene B faders and LFO parameters
+                        for (int f = 0; f < 8; ++f) 
+                            childB->setAttribute ("fader_" + juce::String (f), sceneBPresets[i].faders[f]);
+                        for (int l = 0; l < 8; ++l) { 
+                            childB->setAttribute ("lfo_r_" + juce::String (l), sceneBPresets[i].lfoRates[l]); 
+                            childB->setAttribute ("lfo_d_" + juce::String (l), sceneBPresets[i].lfoDepths[l]); 
+                        }
                     }
                 }
             }
         }
         
+        // 5. Serialize global performance preset recall banks
         auto* banksNode = xml->createNewChildElement ("GLOBAL_BANKS");
         if (banksNode != nullptr)
         {
@@ -607,11 +676,20 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
                 if (childBank != nullptr) {
                     childBank->setAttribute ("saved", presetSlotsSaved[i]);
                     if (presetSlotsSaved[i]) {
-                        childBank->setAttribute ("morph", presets[i].rhythmMorph); childBank->setAttribute ("rest", presets[i].rest); childBank->setAttribute ("legato", presets[i].legato);
-                        childBank->setAttribute ("rate", presets[i].rate); childBank->setAttribute ("entropy", presets[i].entropy); childBank->setAttribute ("harmony", presets[i].harmony);
-                        childBank->setAttribute ("chaos", presets[i].chaos); childBank->setAttribute ("octaves", presets[i].octaves);
-                        for (int f = 0; f < 8; ++f) childBank->setAttribute ("fader_" + juce::String (f), presets[i].faders[f]);
-                        for (int l = 0; l < 8; ++l) { childBank->setAttribute ("lfo_r_" + juce::String (l), presets[i].lfoRates[l]); childBank->setAttribute ("lfo_d_" + juce::String (l), presets[i].lfoDepths[l]); }
+                        childBank->setAttribute ("morph", presets[i].rhythmMorph); 
+                        childBank->setAttribute ("rest", presets[i].rest); 
+                        childBank->setAttribute ("legato", presets[i].legato);
+                        childBank->setAttribute ("rate", presets[i].rate); 
+                        childBank->setAttribute ("entropy", presets[i].entropy); 
+                        childBank->setAttribute ("harmony", presets[i].harmony);
+                        childBank->setAttribute ("chaos", presets[i].chaos); 
+                        childBank->setAttribute ("octaves", presets[i].octaves);
+                        for (int f = 0; f < 8; ++f) 
+                            childBank->setAttribute ("fader_" + juce::String (f), presets[i].faders[f]);
+                        for (int l = 0; l < 8; ++l) { 
+                            childBank->setAttribute ("lfo_r_" + juce::String (l), presets[i].lfoRates[l]); 
+                            childBank->setAttribute ("lfo_d_" + juce::String (l), presets[i].lfoDepths[l]); 
+                        }
                     }
                 }
             }
@@ -626,44 +704,120 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName (apvts.state.getType())) {
         apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+        
+        // 1. Restore active workspace focus and presence flags
+        isSceneBActiveAnchor.store (xmlState->getBoolAttribute ("isSceneBActiveAnchor", false));
+        hasSceneA = xmlState->getBoolAttribute ("hasSceneA", false);
+        hasSceneB = xmlState->getBoolAttribute ("hasSceneB", false);
+
+        // 2. Deserialization of current active Scene A state
+        if (auto* activeSceneANode = xmlState->getChildByName ("CURRENT_SCENE_A"))
+        {
+            sceneA.rhythmMorph = static_cast<float> (activeSceneANode->getDoubleAttribute ("morph"));
+            sceneA.rest = static_cast<float> (activeSceneANode->getDoubleAttribute ("rest"));
+            sceneA.legato = static_cast<float> (activeSceneANode->getDoubleAttribute ("legato"));
+            sceneA.rate = static_cast<float> (activeSceneANode->getDoubleAttribute ("rate"));
+            sceneA.entropy = static_cast<float> (activeSceneANode->getDoubleAttribute ("entropy"));
+            sceneA.harmony = static_cast<float> (activeSceneANode->getDoubleAttribute ("harmony"));
+            sceneA.chaos = static_cast<float> (activeSceneANode->getDoubleAttribute ("chaos"));
+            sceneA.octaves = static_cast<float> (activeSceneANode->getDoubleAttribute ("octaves"));
+            for (int f = 0; f < 8; ++f) 
+                sceneA.faders[f] = static_cast<float> (activeSceneANode->getDoubleAttribute ("fader_" + juce::String (f), 1.0f));
+            for (int l = 0; l < 8; ++l) {
+                sceneA.lfoRates[l] = activeSceneANode->getIntAttribute ("lfo_r_" + juce::String (l));
+                sceneA.lfoDepths[l] = static_cast<float> (activeSceneANode->getDoubleAttribute ("lfo_d_" + juce::String (l)));
+            }
+        }
+
+        // 3. Deserialization of current active Scene B state
+        if (auto* activeSceneBNode = xmlState->getChildByName ("CURRENT_SCENE_B"))
+        {
+            sceneB.rhythmMorph = static_cast<float> (activeSceneBNode->getDoubleAttribute ("morph"));
+            sceneB.rest = static_cast<float> (activeSceneBNode->getDoubleAttribute ("rest"));
+            sceneB.legato = static_cast<float> (activeSceneBNode->getDoubleAttribute ("legato"));
+            sceneB.rate = static_cast<float> (activeSceneBNode->getDoubleAttribute ("rate"));
+            sceneB.entropy = static_cast<float> (activeSceneBNode->getDoubleAttribute ("entropy"));
+            sceneB.harmony = static_cast<float> (activeSceneBNode->getDoubleAttribute ("harmony"));
+            sceneB.chaos = static_cast<float> (activeSceneBNode->getDoubleAttribute ("chaos"));
+            sceneB.octaves = static_cast<float> (activeSceneBNode->getDoubleAttribute ("octaves"));
+            for (int f = 0; f < 8; ++f) 
+                sceneB.faders[f] = static_cast<float> (activeSceneBNode->getDoubleAttribute ("fader_" + juce::String (f), 1.0f));
+            for (int l = 0; l < 8; ++l) {
+                sceneB.lfoRates[l] = activeSceneBNode->getIntAttribute ("lfo_r_" + juce::String (l));
+                sceneB.lfoDepths[l] = static_cast<float> (activeSceneBNode->getDoubleAttribute ("lfo_d_" + juce::String (l)));
+            }
+        }
+
+        // 4. Deserialization of slot presets matrices
         if (auto* presetsNodeA = xmlState->getChildByName ("SCENE_A_PRESETS")) {
             for (int i = 0; i < 8; ++i) {
                 if (auto* childA = presetsNodeA->getChildByName ("SLOT_" + juce::String (i))) {
                     sceneASlotsSaved[i] = childA->getBoolAttribute ("saved");
                     if (sceneASlotsSaved[i]) {
-                        sceneAPresets[i].rhythmMorph = static_cast<float> (childA->getDoubleAttribute ("morph")); sceneAPresets[i].rest = static_cast<float> (childA->getDoubleAttribute ("rest")); sceneAPresets[i].legato = static_cast<float> (childA->getDoubleAttribute ("legato"));
-                        sceneAPresets[i].rate = static_cast<float> (childA->getDoubleAttribute ("rate")); sceneAPresets[i].entropy = static_cast<float> (childA->getDoubleAttribute ("entropy")); sceneAPresets[i].harmony = static_cast<float> (childA->getDoubleAttribute ("harmony"));
-                        sceneAPresets[i].chaos = static_cast<float> (childA->getDoubleAttribute ("chaos")); sceneAPresets[i].octaves = static_cast<float> (childA->getDoubleAttribute ("octaves"));
-                        for (int f = 0; f < 8; ++f) sceneAPresets[i].faders[f] = static_cast<float> (childA->getDoubleAttribute ("fader_" + juce::String (f)));
-                        for (int l = 0; l < 8; ++l) { sceneAPresets[i].lfoRates[l] = childA->getIntAttribute ("lfo_r_" + juce::String (l)); sceneAPresets[i].lfoDepths[l] = static_cast<float> (childA->getDoubleAttribute ("lfo_d_" + juce::String (l))); }
+                        sceneAPresets[i].rhythmMorph = static_cast<float> (childA->getDoubleAttribute ("morph")); 
+                        sceneAPresets[i].rest = static_cast<float> (childA->getDoubleAttribute ("rest")); 
+                        sceneAPresets[i].legato = static_cast<float> (childA->getDoubleAttribute ("legato"));
+                        sceneAPresets[i].rate = static_cast<float> (childA->getDoubleAttribute ("rate")); 
+                        sceneAPresets[i].entropy = static_cast<float> (childA->getDoubleAttribute ("entropy")); 
+                        sceneAPresets[i].harmony = static_cast<float> (childA->getDoubleAttribute ("harmony"));
+                        sceneAPresets[i].chaos = static_cast<float> (childA->getDoubleAttribute ("chaos")); 
+                        sceneAPresets[i].octaves = static_cast<float> (childA->getDoubleAttribute ("octaves"));
+                        for (int f = 0; f < 8; ++f) 
+                            sceneAPresets[i].faders[f] = static_cast<float> (childA->getDoubleAttribute ("fader_" + juce::String (f)));
+                        for (int l = 0; l < 8; ++l) { 
+                            sceneAPresets[i].lfoRates[l] = childA->getIntAttribute ("lfo_r_" + juce::String (l)); 
+                            sceneAPresets[i].lfoDepths[l] = static_cast<float> (childA->getDoubleAttribute ("lfo_d_" + juce::String (l))); 
+                        }
                     }
                 }
             }
         }
-        if (auto* presetsNodeB = xmlState->getChildByName ("SCENE_A_PRESETS")) { 
+        
+        // FIXED: Changed child lookup from "SCENE_A_PRESETS" to "SCENE_B_PRESETS" to resolve overwriting Scene B with Scene A
+        if (auto* presetsNodeB = xmlState->getChildByName ("SCENE_B_PRESETS")) { 
             for (int i = 0; i < 8; ++i) {
                 if (auto* childB = presetsNodeB->getChildByName ("SLOT_" + juce::String (i))) {
                     sceneBSlotsSaved[i] = childB->getBoolAttribute ("saved");
                     if (sceneBSlotsSaved[i]) {
-                        sceneBPresets[i].rhythmMorph = static_cast<float> (childB->getDoubleAttribute ("morph")); sceneBPresets[i].rest = static_cast<float> (childB->getDoubleAttribute ("rest")); sceneBPresets[i].legato = static_cast<float> (childB->getDoubleAttribute ("legato"));
-                        sceneBPresets[i].rate = static_cast<float> (childB->getDoubleAttribute ("rate")); sceneBPresets[i].entropy = static_cast<float> (childB->getDoubleAttribute ("entropy")); sceneBPresets[i].harmony = static_cast<float> (childB->getDoubleAttribute ("harmony"));
-                        sceneBPresets[i].chaos = static_cast<float> (childB->getDoubleAttribute ("chaos")); sceneBPresets[i].octaves = static_cast<float> (childB->getDoubleAttribute ("octaves"));
-                        for (int f = 0; f < 8; ++f) sceneBPresets[i].faders[f] = static_cast<float> (childB->getDoubleAttribute ("fader_" + juce::String (f)));
-                        for (int l = 0; l < 8; ++l) { sceneBPresets[i].lfoRates[l] = childB->getIntAttribute ("lfo_r_" + juce::String (l)); sceneBPresets[i].lfoDepths[l] = static_cast<float> (childB->getDoubleAttribute ("lfo_d_" + juce::String (l))); }
+                        sceneBPresets[i].rhythmMorph = static_cast<float> (childB->getDoubleAttribute ("morph")); 
+                        sceneBPresets[i].rest = static_cast<float> (childB->getDoubleAttribute ("rest")); 
+                        sceneBPresets[i].legato = static_cast<float> (childB->getDoubleAttribute ("legato"));
+                        sceneBPresets[i].rate = static_cast<float> (childB->getDoubleAttribute ("rate")); 
+                        sceneBPresets[i].entropy = static_cast<float> (childB->getDoubleAttribute ("entropy")); 
+                        sceneBPresets[i].harmony = static_cast<float> (childB->getDoubleAttribute ("harmony"));
+                        sceneBPresets[i].chaos = static_cast<float> (childB->getDoubleAttribute ("chaos")); 
+                        sceneBPresets[i].octaves = static_cast<float> (childB->getDoubleAttribute ("octaves"));
+                        for (int f = 0; f < 8; ++f) 
+                            sceneBPresets[i].faders[f] = static_cast<float> (childB->getDoubleAttribute ("fader_" + juce::String (f)));
+                        for (int l = 0; l < 8; ++l) { 
+                            sceneBPresets[i].lfoRates[l] = childB->getIntAttribute ("lfo_r_" + juce::String (l)); 
+                            sceneBPresets[i].lfoDepths[l] = static_cast<float> (childB->getDoubleAttribute ("lfo_d_" + juce::String (l))); 
+                        }
                     }
                 }
             }
         }
+        
+        // 5. Deserialization of global banks recall slots
         if (auto* banksNode = xmlState->getChildByName ("GLOBAL_BANKS")) {
             for (int i = 0; i < 8; ++i) {
                 if (auto* childBank = banksNode->getChildByName ("BANK_" + juce::String (i))) {
                     presetSlotsSaved[i] = childBank->getBoolAttribute ("saved");
                     if (presetSlotsSaved[i]) {
-                        presets[i].rhythmMorph = static_cast<float> (childBank->getDoubleAttribute ("morph")); presets[i].rest = static_cast<float> (childBank->getDoubleAttribute ("rest")); presets[i].legato = static_cast<float> (childBank->getDoubleAttribute ("legato"));
-                        presets[i].rate = static_cast<float> (childBank->getDoubleAttribute ("rate")); presets[i].entropy = static_cast<float> (childBank->getDoubleAttribute ("entropy")); presets[i].harmony = static_cast<float> (childBank->getDoubleAttribute ("harmony"));
-                        presets[i].chaos = static_cast<float> (childBank->getDoubleAttribute ("chaos")); presets[i].octaves = static_cast<float> (childBank->getDoubleAttribute ("octaves"));
-                        for (int f = 0; f < 8; ++f) presets[i].faders[f] = static_cast<float> (childBank->getDoubleAttribute ("fader_" + juce::String (f)));
-                        for (int l = 0; l < 8; ++l) { presets[i].lfoRates[l] = childBank->getIntAttribute ("lfo_r_" + juce::String (l)); presets[i].lfoDepths[l] = static_cast<float> (childBank->getDoubleAttribute ("lfo_d_" + juce::String (l))); }
+                        presets[i].rhythmMorph = static_cast<float> (childBank->getDoubleAttribute ("morph")); 
+                        presets[i].rest = static_cast<float> (childBank->getDoubleAttribute ("rest")); 
+                        presets[i].legato = static_cast<float> (childBank->getDoubleAttribute ("legato"));
+                        presets[i].rate = static_cast<float> (childBank->getDoubleAttribute ("rate")); 
+                        presets[i].entropy = static_cast<float> (childBank->getDoubleAttribute ("entropy")); 
+                        presets[i].harmony = static_cast<float> (childBank->getDoubleAttribute ("harmony"));
+                        presets[i].chaos = static_cast<float> (childBank->getDoubleAttribute ("chaos")); 
+                        presets[i].octaves = static_cast<float> (childBank->getDoubleAttribute ("octaves"));
+                        for (int f = 0; f < 8; ++f) 
+                            presets[i].faders[f] = static_cast<float> (childBank->getDoubleAttribute ("fader_" + juce::String (f)));
+                        for (int l = 0; l < 8; ++l) { 
+                            presets[i].lfoRates[l] = childBank->getIntAttribute ("lfo_r_" + juce::String (l)); 
+                            presets[i].lfoDepths[l] = static_cast<float> (childBank->getDoubleAttribute ("lfo_d_" + juce::String (l))); 
+                        }
                     }
                 }
             }
