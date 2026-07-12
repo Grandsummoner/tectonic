@@ -50,10 +50,9 @@ target_compile_definitions(tectonic
         JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1 # Added to bypass parameter automation ID conflict checks
 )
 
-# Add and define binary data target to compile our background asset
+# Add and define binary data target to compile our renamed drum samples
 juce_add_binary_data(TectonicAssets
     SOURCES
-        assets/images/tectonic_panel.svg
         assets/samples/D1_Kick_1.wav
         assets/samples/D1_Kick_2.wav
         assets/samples/D1_Kick_3.wav
