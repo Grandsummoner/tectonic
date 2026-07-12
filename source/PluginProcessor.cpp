@@ -24,7 +24,6 @@ void loadBinarySampleToChannel (TectonicAudioProcessor::DrumChannel& channel,
 }
 
 TectonicAudioProcessor::TectonicAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if JucePlugin_IsSynth
@@ -36,7 +35,6 @@ TectonicAudioProcessor::TectonicAudioProcessor()
                      #endif
                        ),
        apvts (*this, nullptr, "Parameters", createParameterLayout())
-#endif
 {
     formatManager.registerBasicFormats();
 
@@ -94,7 +92,6 @@ TectonicAudioProcessor::~TectonicAudioProcessor() {}
 
 float TectonicAudioProcessor::getParamValue (const juce::String& paramId) const
 {
-    // Checks for nullptr initialization states to prevent DAW scans from crashing [1.2.1]
     if (auto* param = apvts.getRawParameterValue (paramId))
         return param->load();
     return 0.0f;
@@ -214,17 +211,24 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
                     int offset = static_cast<int> (getParamValue (prefix + "_offset"));
 
-                    auto pattern = generateEuclideanPattern (steps, triggers, offset);
-                    if (pattern[currentTotalStep % steps])
+                    // Real-time division-by-zero / out-of-bounds safety guard [1.2.1]
+                    if (steps > 0)
                     {
-                        float rootNote = getParamValue (prefix + "_param1");
-                        float density = getParamValue (prefix + "_param3");
-
-                        if (juce::Random::getSystemRandom().nextFloat() <= density)
+                        auto pattern = generateEuclideanPattern (steps, triggers, offset);
+                        if (!pattern.empty())
                         {
-                            int noteToPlay = static_cast<int> (rootNote);
-                            midiMessages.addEvent (juce::MidiMessage::noteOn (1, noteToPlay, 0.8f), sampleIdx);
-                            midiMessages.addEvent (juce::MidiMessage::noteOff (1, noteToPlay), sampleIdx + 2000);
+                            if (pattern[currentTotalStep % steps])
+                            {
+                                float rootNote = getParamValue (prefix + "_param1");
+                                float density = getParamValue (prefix + "_param3");
+
+                                if (juce::Random::getSystemRandom().nextFloat() <= density)
+                                {
+                                    int noteToPlay = static_cast<int> (rootNote);
+                                    midiMessages.addEvent (juce::MidiMessage::noteOn (1, noteToPlay, 0.8f), sampleIdx);
+                                    midiMessages.addEvent (juce::MidiMessage::noteOff (1, noteToPlay), sampleIdx + 2000);
+                                }
+                            }
                         }
                     }
                 }
@@ -241,15 +245,22 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
                     int offset = static_cast<int> (getParamValue (prefix + "_offset"));
 
-                    auto pattern = generateEuclideanPattern (steps, triggers, offset);
-                    bool shouldTrigger = pattern[currentTotalStep % steps];
-
-                    if (drum.isFillActive.load())
-                        shouldTrigger = !shouldTrigger;
-
-                    if (shouldTrigger)
+                    // Real-time division-by-zero / out-of-bounds safety guard [1.2.1]
+                    if (steps > 0)
                     {
-                        drum.trigger();
+                        auto pattern = generateEuclideanPattern (steps, triggers, offset);
+                        if (!pattern.empty())
+                        {
+                            bool shouldTrigger = pattern[currentTotalStep % steps];
+
+                            if (drum.isFillActive.load())
+                                shouldTrigger = !shouldTrigger;
+
+                            if (shouldTrigger)
+                            {
+                                drum.trigger();
+                            }
+                        }
                     }
                 }
             }
@@ -274,8 +285,9 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
             double speedRatio = std::pow (2.0, tuning / 12.0);
 
+            // Safe double-to-float envelope decay calculations
             double decayTimeSamples = decay * currentSampleRate;
-            float decayCoeff = std::exp (-1.0f / decayTimeSamples);
+            float decayCoeff = (decayTimeSamples > 0.0) ? std::exp (-1.0f / static_cast<float> (decayTimeSamples)) : 0.0f;
 
             int idxInt = static_cast<int> (chan.readPointer);
             float fraction = static_cast<float> (chan.readPointer - idxInt);
