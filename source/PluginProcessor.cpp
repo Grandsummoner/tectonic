@@ -170,8 +170,8 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         auto positionInfo = playHead->getPosition();
         if (positionInfo.hasValue() && positionInfo->getIsPlaying())
         {
-            bpm = positionInfo->getBpm().value_or (120.0);
-            auto ppqPosition = positionInfo->getPpqPosition().value_or (0.0);
+            bpm = positionInfo->getBpm().hasValue() ? *(positionInfo->getBpm()) : 120.0;
+            auto ppqPosition = positionInfo->getPpqPosition().hasValue() ? *(positionInfo->getPpqPosition()) : 0.0;
 
             double ppqPerSample = (bpm / 60.0) / currentSampleRate;
             ppq16thPerSample = ppqPerSample * 4.0; 
@@ -185,7 +185,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         float leftMixSum = 0.0f;
         float rightMixSum = 0.0f;
 
-        // 1. Process Sequencer Timing
         if (sequencerTriggeredThisBlock)
         {
             double currentPpq16th = startPpq16th + (sampleIdx * ppq16thPerSample);
@@ -237,7 +236,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     auto pattern = generateEuclideanPattern (steps, triggers, offset);
                     bool shouldTrigger = pattern[currentTotalStep % steps];
 
-                    // If Inverted Drum Fill button is held, trigger is flipped [1]
                     if (drum.isFillActive.load())
                         shouldTrigger = !shouldTrigger;
 
@@ -249,7 +247,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             }
         }
 
-        // 2. Compute audio outputs for active drum channels
         for (int d = 0; d < 6; ++d)
         {
             auto& chan = drumChannels[d];
@@ -347,11 +344,11 @@ bool TectonicAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
     juce::ignoreUnused (layouts);
     return true;
   #else
-    if (layouts.getMainOutput() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutput() != juce::AudioChannelSet::stereo())
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
    #if ! JucePlugin_IsSynth
-    if (layouts.getMainInput() != layouts.getMainOutput())
+    if (layouts.getMainInputChannelSet() != layouts.getMainOutputChannelSet())
         return false;
    #endif
     return true;
