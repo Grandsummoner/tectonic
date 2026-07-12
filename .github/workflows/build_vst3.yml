@@ -1,0 +1,50 @@
+name: Build VST3 Windows
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build VST3 Windows
+    runs-on: windows-latest
+
+    steps:
+    # 1. Checkout the repository recursively to pull submodules
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # 2. Set up CMake
+    - name: Set up CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.22.x'
+
+    # 3. Configure the build directory for Release
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    # 4. Compile the plugin target
+    - name: Build Plugin
+      run: cmake --build build --config Release --parallel 4
+
+    # 5. Compress the VST3 bundle into a single zip file to avoid nested artifact folders
+    - name: Compress VST3 Artifact
+      shell: powershell
+      run: |
+        Compress-Archive -Path "build/tectonic_Artefacts/Release/VST3/Tectonic.vst3" -DestinationPath "Tectonic_VST3.zip"
+
+    # 6. Upload the single zip archive
+    - name: Upload VST3 Zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tectonic_Windows_VST3
+        path: Tectonic_VST3.zip
+        if-no-files-found: error
