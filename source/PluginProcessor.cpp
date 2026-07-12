@@ -11,7 +11,6 @@ void loadBinarySampleToChannel (TectonicAudioProcessor::DrumChannel& channel,
                                 juce::AudioFormatManager& formatManager,
                                 const BinarySampleResource& resource)
 {
-    // CRITICAL SAFETY GUARD: Prevents trying to load empty binary resource streams [1.2.1]
     if (resource.dataPtr == nullptr || resource.dataSize <= 0)
         return;
 
@@ -320,7 +319,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         for (int d = 0; d < 6; ++d)
         {
             auto& chan = drumChannels[d];
-            if (!chan.isPlaying) 
+            if (!chan.isPlaying.load()) // Atomic read
                 continue;
 
             const auto* sampleBuffer = chan.getActiveBuffer();
@@ -329,7 +328,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
             int numSrcChans = sampleBuffer->getNumChannels();
             
-            // CRITICAL SAFETY GUARD: Prevents out-of-bounds channel reads [1.2.1]
+            // Safety guard: skip rendering if the buffer is empty/corrupt
             if (numSrcChans <= 0)
                 continue;
 
@@ -345,14 +344,16 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             double decayTimeSamples = decay * currentSampleRate;
             float decayCoeff = (decayTimeSamples > 0.0) ? std::exp (-1.0f / static_cast<float> (decayTimeSamples)) : 0.0f;
 
-            int idxInt = static_cast<int> (chan.readPointer);
-            float fraction = static_cast<float> (chan.readPointer - idxInt);
+            // Thread-safe atomic read of the playback index
+            double currentReadPointer = chan.readPointer.load();
+            int idxInt = static_cast<int> (currentReadPointer);
+            float fraction = static_cast<float> (currentReadPointer - idxInt);
 
             if (idxInt >= numFrames - 1)
             {
-                chan.isPlaying = false;
-                chan.readPointer = 0.0;
-                chan.envLevel = 0.0f;
+                chan.isPlaying.store (false);
+                chan.readPointer.store (0.0);
+                chan.envLevel.store (0.0f);
                 continue;
             }
 
@@ -374,15 +375,19 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 rightSample = leftSample;
             }
 
-            leftSample *= chan.envLevel;
-            rightSample *= chan.envLevel;
+            // Atomic read/write of envelope level
+            float currentEnv = chan.envLevel.load();
+            leftSample *= currentEnv;
+            rightSample *= currentEnv;
 
-            chan.envLevel *= decayCoeff;
+            // Decay the envelope level atomically [1]
+            float nextEnv = currentEnv * decayCoeff;
+            chan.envLevel.store (nextEnv);
             
-            if (chan.envLevel < 0.0005f)
+            if (nextEnv < 0.0005f)
             {
-                chan.isPlaying = false;
-                chan.envLevel = 0.0f;
+                chan.isPlaying.store (false);
+                chan.envLevel.store (0.0f);
             }
 
             if (overdrive > 0.01f)
@@ -405,7 +410,8 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             leftMixSum += leftSample;
             rightMixSum += rightSample;
 
-            chan.readPointer += speedRatio;
+            // Move pointer forward atomically
+            chan.readPointer.store (currentReadPointer + speedRatio);
         }
 
         if (buffer.getNumChannels() > 0) buffer.addSample (0, sampleIdx, leftMixSum);
