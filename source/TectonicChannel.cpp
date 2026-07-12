@@ -72,7 +72,10 @@ void TectonicChannel::updateBindings()
     attachments.clear();
 
     juce::String prefix = isSynth ? "synth" : "drum";
-    int chNumber = index + 1;
+    
+    // Correct routing calculation:
+    // Synth 1 & 2 use (index + 1). Drum 1 to 6 (indices 2 to 7) use (index - 1)
+    int chNumber = isSynth ? (index + 1) : (index - 1);
 
     if (isFocused)
     {
