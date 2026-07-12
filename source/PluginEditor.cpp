@@ -4,8 +4,7 @@
 TectonicAudioProcessorEditor::TectonicAudioProcessorEditor (TectonicAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (800, 600);
-
+    // 1. First, instantiate all child channel components
     for (int i = 0; i < 8; ++i)
     {
         bool isSynth = (i < 2);
@@ -17,14 +16,20 @@ TectonicAudioProcessorEditor::TectonicAudioProcessorEditor (TectonicAudioProcess
             
             for (int c = 0; c < 8; ++c)
             {
-                if (c == clickedIndex && currentlyFocused != clickedIndex)
-                    channels[c]->setFocusState (true);
-                else
-                    channels[c]->setFocusState (false);
+                if (channels[c] != nullptr)
+                {
+                    if (c == clickedIndex && currentlyFocused != clickedIndex)
+                        channels[c]->setFocusState (true);
+                    else
+                        channels[c]->setFocusState (false);
+                }
             }
             repaint();
         };
     }
+
+    // 2. ONLY call setSize at the very end when all components are ready
+    setSize (800, 600);
 }
 
 TectonicAudioProcessorEditor::~TectonicAudioProcessorEditor() {}
@@ -81,15 +86,23 @@ void TectonicAudioProcessorEditor::resized()
 
     for (int i = 0; i < 8; ++i)
     {
-        channels[i]->setBounds (i * colWidth, 0, colWidth, bounds.getHeight());
+        // Safe check to avoid dereferencing uninitialized channels
+        if (channels[i] != nullptr)
+        {
+            channels[i]->setBounds (i * colWidth, 0, colWidth, bounds.getHeight());
+        }
     }
 }
 
 int TectonicAudioProcessorEditor::getFocusedChannel() const
 {
     for (int i = 0; i < 8; ++i)
-        if (channels[i]->getFocusState()) 
+    {
+        if (channels[i] != nullptr && channels[i]->getFocusState())
+        {
             return i;
+        }
+    }
             
     return -1;
 }
