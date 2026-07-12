@@ -34,12 +34,18 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Static layout helper function to generate our parameter map
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    
+    // Generates a Euclidean pattern using an optimized division algorithm
+    static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
 
-    // ValueTree containing all parameter data
     juce::AudioProcessorValueTreeState apvts;
 
 private:
+    double currentSampleRate = 44100.0;
+    
+    // Track the last processed 16th-note step across process blocks
+    int lastTotal16thStep = -1;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessor)
 };
