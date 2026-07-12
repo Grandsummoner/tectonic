@@ -40,13 +40,14 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
 
-    // Synth Channel Struct (Supports Muting)
+    // Safe, crash-proof parameter reader helper
+    float getParamValue (const juce::String& paramId) const;
+
     struct SynthChannel
     {
         std::atomic<bool> isMuted { false };
     };
 
-    // Upgraded Drum Channel Struct (Supports Muting & Momentary Fill)
     struct DrumChannel
     {
         std::vector<juce::AudioSampleBuffer> samplePool;
@@ -56,7 +57,6 @@ public:
         bool isPlaying = false;
         float envLevel = 0.0f;
 
-        // Thread-safe performance flags
         std::atomic<bool> isMuted { false };
         std::atomic<bool> isFillActive { false };
 
