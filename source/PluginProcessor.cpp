@@ -92,6 +92,14 @@ TectonicAudioProcessor::TectonicAudioProcessor()
 
 TectonicAudioProcessor::~TectonicAudioProcessor() {}
 
+float TectonicAudioProcessor::getParamValue (const juce::String& paramId) const
+{
+    // Checks for nullptr initialization states to prevent DAW scans from crashing [1.2.1]
+    if (auto* param = apvts.getRawParameterValue (paramId))
+        return param->load();
+    return 0.0f;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout TectonicAudioProcessor::createParameterLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
@@ -202,15 +210,15 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                         continue;
 
                     juce::String prefix = "synth" + juce::String (synthIdx);
-                    int steps = *apvts.getRawParameterValue (prefix + "_steps");
-                    int triggers = *apvts.getRawParameterValue (prefix + "_triggers");
-                    int offset = *apvts.getRawParameterValue (prefix + "_offset");
+                    int steps = static_cast<int> (getParamValue (prefix + "_steps"));
+                    int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
+                    int offset = static_cast<int> (getParamValue (prefix + "_offset"));
 
                     auto pattern = generateEuclideanPattern (steps, triggers, offset);
                     if (pattern[currentTotalStep % steps])
                     {
-                        float rootNote = *apvts.getRawParameterValue (prefix + "_param1");
-                        float density = *apvts.getRawParameterValue (prefix + "_param3");
+                        float rootNote = getParamValue (prefix + "_param1");
+                        float density = getParamValue (prefix + "_param3");
 
                         if (juce::Random::getSystemRandom().nextFloat() <= density)
                         {
@@ -229,9 +237,9 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                         continue;
 
                     juce::String prefix = "drum" + juce::String (drumIdx);
-                    int steps = *apvts.getRawParameterValue (prefix + "_steps");
-                    int triggers = *apvts.getRawParameterValue (prefix + "_triggers");
-                    int offset = *apvts.getRawParameterValue (prefix + "_offset");
+                    int steps = static_cast<int> (getParamValue (prefix + "_steps"));
+                    int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
+                    int offset = static_cast<int> (getParamValue (prefix + "_offset"));
 
                     auto pattern = generateEuclideanPattern (steps, triggers, offset);
                     bool shouldTrigger = pattern[currentTotalStep % steps];
@@ -260,9 +268,9 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             int numFrames = sampleBuffer->getNumSamples();
 
             juce::String prefix = "drum" + juce::String (d + 1);
-            float tuning = *apvts.getRawParameterValue (prefix + "_param1");
-            float decay = *apvts.getRawParameterValue (prefix + "_param2");
-            float overdrive = *apvts.getRawParameterValue (prefix + "_param3");
+            float tuning = getParamValue (prefix + "_param1");
+            float decay = getParamValue (prefix + "_param2");
+            float overdrive = getParamValue (prefix + "_param3");
 
             double speedRatio = std::pow (2.0, tuning / 12.0);
 
