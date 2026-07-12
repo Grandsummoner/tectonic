@@ -45,9 +45,9 @@ juce_add_binary_data(TectonicAssets
         assets/samples/D6_Bell_4.wav
 )
 
-# Declare the audio plugin
+# Declare the audio plugin (Updated to Navy Audio)
 juce_add_plugin(tectonic
-    COMPANY_NAME "Grandsummoner"
+    COMPANY_NAME "Navy Audio"
     PLUGIN_NAME "Tectonic"
     PRODUCT_NAME "Tectonic"
     FORMATS VST3 AU Standalone
