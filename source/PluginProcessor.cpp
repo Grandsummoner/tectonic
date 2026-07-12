@@ -216,14 +216,13 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
     }
 
-    // --- Part A: Aligned, Safe MIDI Note-Off Scheduler [1.2.1] ---
+    // --- Part A: Aligned, Safe MIDI Note-Off Scheduler ---
     juce::MidiBuffer processedMidi;
     for (auto it = scheduledNoteOffs.begin(); it != scheduledNoteOffs.end();)
     {
         it->second -= numSamples;
         if (it->second <= 0)
         {
-            // Trigger note-offs strictly within the valid range of the current block [1.2.1]
             int safeOffset = juce::jlimit (0, numSamples - 1, it->second + numSamples);
             processedMidi.addEvent (juce::MidiMessage::noteOff (1, it->first), safeOffset);
             it = scheduledNoteOffs.erase (it);
@@ -274,11 +273,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                                 if (juce::Random::getSystemRandom().nextFloat() <= density)
                                 {
                                     int noteToPlay = static_cast<int> (rootNote);
-                                    
-                                    // Add the Note-On safely to the current block timeframe [1.2.1]
                                     processedMidi.addEvent (juce::MidiMessage::noteOn (1, noteToPlay, 0.8f), sampleIdx);
-
-                                    // Queue the Note-Off to be executed in 2000 samples safely [1.2.1]
                                     scheduledNoteOffs.push_back ({ noteToPlay, 2000 });
                                 }
                             }
@@ -318,7 +313,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             }
         }
 
-        // 3. Audio Voice Mix rendering
         for (int d = 0; d < 6; ++d)
         {
             auto& chan = drumChannels[d];
@@ -409,7 +403,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         if (buffer.getNumChannels() > 1) buffer.addSample (1, sampleIdx, rightMixSum);
     }
 
-    // Merge generated note streams securely back to DAW MIDI buffer [1.2.1]
     midiMessages.swapWith (processedMidi);
 }
 
@@ -435,19 +428,4 @@ void TectonicAudioProcessor::setCurrentProgram (int index) {}
 const juce::String TectonicAudioProcessor::getProgramName (int index) { return {}; }
 void TectonicAudioProcessor::changeProgramName (int index, const juce::String& newName) {}
 
-void TectonicAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
-{
-    auto state = apvts.copyState();
-    std::unique_ptr<juce::XmlElement> xml (state.createXml());
-    copyXmlToBinary (*xml, destData);
-}
-
-void TectonicAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
-{
-    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
-    if (xmlState != nullptr)
-        if (xmlState->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
-}
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new TectonicAudioProcessor(); }
+void TectonicAudioProcessor::getStateInformation (juce::MemoryBlo
