@@ -16,7 +16,6 @@ public:
 
 private:
     TectonicAudioProcessor& audioProcessor;
-    std::unique_ptr<juce::Drawable> backgroundSvg;
     std::array<std::unique_ptr<TectonicChannel>, 8> channels;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessorEditor)
