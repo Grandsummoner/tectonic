@@ -14,7 +14,6 @@ public:
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
-    // Fully aligned to Navy Arp's robust bus layout check
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override
     {
         if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
@@ -47,18 +46,7 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
 
-    // Structural container to pre-cache raw APVTS pointers
-    struct ChannelParams
-    {
-        std::atomic<float>* param1 = nullptr;
-        std::atomic<float>* param2 = nullptr;
-        std::atomic<float>* param3 = nullptr;
-        std::atomic<float>* steps  = nullptr;
-        std::atomic<float>* triggers = nullptr;
-        std::atomic<float>* offset   = nullptr;
-    };
-
-    // Real-time safe, allocation-free parameter reader
+    // Real-time safe parameter reader
     float getCachedParam (int channelIndex, int paramType) const;
 
     struct SynthChannel
@@ -109,7 +97,6 @@ public:
     std::array<SynthChannel, 2> synthChannels;
     std::array<DrumChannel, 6> drumChannels;
     
-    // Array to hold the pre-cached real-time parameter pointers
     std::array<ChannelParams, 8> cachedParams;
 
     juce::AudioProcessorValueTreeState apvts;
@@ -118,6 +105,9 @@ private:
     double currentSampleRate = 44100.0;
     int lastTotal16thStep = -1;
     juce::AudioFormatManager formatManager;
+
+    // Aligned to Navy Arp's thread-safe queue to schedule Note-Off events
+    std::vector<std::pair<int, int>> scheduledNoteOffs;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessor)
 };
