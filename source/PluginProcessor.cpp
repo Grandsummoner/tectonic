@@ -86,14 +86,45 @@ TectonicAudioProcessor::TectonicAudioProcessor()
     for (auto& res : drum4_resources) loadBinarySampleToChannel (drumChannels[3], formatManager, res);
     for (auto& res : drum5_resources) loadBinarySampleToChannel (drumChannels[4], formatManager, res);
     for (auto& res : drum6_resources) loadBinarySampleToChannel (drumChannels[5], formatManager, res);
+
+    // Pre-cache all 48 parameters to avoid heap allocations/string hashes inside processBlock [43]
+    for (int i = 0; i < 8; ++i)
+    {
+        bool isSynth = (i < 2);
+        juce::String prefix = isSynth ? "synth" : "drum";
+        int chNumber = isSynth ? (i + 1) : (i - 1);
+
+        auto& cp = cachedParams[i];
+        cp.param1   = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_param1");
+        cp.param2   = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_param2");
+        cp.param3   = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_param3");
+        cp.steps    = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_steps");
+        cp.triggers = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_triggers");
+        cp.offset   = apvts.getRawParameterValue (prefix + juce::String (chNumber) + "_offset");
+    }
 }
 
 TectonicAudioProcessor::~TectonicAudioProcessor() {}
 
-float TectonicAudioProcessor::getParamValue (const juce::String& paramId) const
+float TectonicAudioProcessor::getCachedParam (int channelIndex, int paramType) const
 {
-    if (auto* param = apvts.getRawParameterValue (paramId))
-        return param->load();
+    // Retrieves pre-cached atomic floats in O(1) time without locks or allocations [43]
+    auto& cp = cachedParams[channelIndex];
+    std::atomic<float>* ptr = nullptr;
+
+    switch (paramType)
+    {
+        case 0: ptr = cp.param1;   break;
+        case 1: ptr = cp.param2;   break;
+        case 2: ptr = cp.param3;   break;
+        case 3: ptr = cp.steps;    break;
+        case 4: ptr = cp.triggers; break;
+        case 5: ptr = cp.offset;   break;
+    }
+
+    if (ptr != nullptr)
+        return ptr->load();
+
     return 0.0f;
 }
 
@@ -202,16 +233,16 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 // A. Synths
                 for (int synthIdx = 1; synthIdx <= 2; ++synthIdx)
                 {
-                    auto& syn = synthChannels[synthIdx - 1];
+                    int chanIdx = synthIdx - 1;
+                    auto& syn = synthChannels[chanIdx];
                     if (syn.isMuted.load()) 
                         continue;
 
-                    juce::String prefix = "synth" + juce::String (synthIdx);
-                    int steps = static_cast<int> (getParamValue (prefix + "_steps"));
-                    int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
-                    int offset = static_cast<int> (getParamValue (prefix + "_offset"));
+                    // Allocation-free pre-cached parameter fetches
+                    int steps    = static_cast<int> (getCachedParam (chanIdx, 3));
+                    int triggers = static_cast<int> (getCachedParam (chanIdx, 4));
+                    int offset   = static_cast<int> (getCachedParam (chanIdx, 5));
 
-                    // Real-time division-by-zero / out-of-bounds safety guard [1.2.1]
                     if (steps > 0)
                     {
                         auto pattern = generateEuclideanPattern (steps, triggers, offset);
@@ -219,8 +250,8 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                         {
                             if (pattern[currentTotalStep % steps])
                             {
-                                float rootNote = getParamValue (prefix + "_param1");
-                                float density = getParamValue (prefix + "_param3");
+                                float rootNote = getCachedParam (chanIdx, 0);
+                                float density  = getCachedParam (chanIdx, 2);
 
                                 if (juce::Random::getSystemRandom().nextFloat() <= density)
                                 {
@@ -236,16 +267,16 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 // B. Drums
                 for (int drumIdx = 1; drumIdx <= 6; ++drumIdx)
                 {
+                    int chanIdx = drumIdx + 1; // Maps Drum 1 to 6 (indices 2 to 7)
                     auto& drum = drumChannels[drumIdx - 1];
                     if (drum.isMuted.load()) 
                         continue;
 
-                    juce::String prefix = "drum" + juce::String (drumIdx);
-                    int steps = static_cast<int> (getParamValue (prefix + "_steps"));
-                    int triggers = static_cast<int> (getParamValue (prefix + "_triggers"));
-                    int offset = static_cast<int> (getParamValue (prefix + "_offset"));
+                    // Allocation-free pre-cached parameter fetches
+                    int steps    = static_cast<int> (getCachedParam (chanIdx, 3));
+                    int triggers = static_cast<int> (getCachedParam (chanIdx, 4));
+                    int offset   = static_cast<int> (getCachedParam (chanIdx, 5));
 
-                    // Real-time division-by-zero / out-of-bounds safety guard [1.2.1]
                     if (steps > 0)
                     {
                         auto pattern = generateEuclideanPattern (steps, triggers, offset);
@@ -277,15 +308,15 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 continue;
 
             int numFrames = sampleBuffer->getNumSamples();
+            int chanIdx = d + 2; // Maps Drum 1 to 6 (indices 2 to 7)
 
-            juce::String prefix = "drum" + juce::String (d + 1);
-            float tuning = getParamValue (prefix + "_param1");
-            float decay = getParamValue (prefix + "_param2");
-            float overdrive = getParamValue (prefix + "_param3");
+            // Read pre-cached real-time parameters [43]
+            float tuning    = getCachedParam (chanIdx, 0);
+            float decay     = getCachedParam (chanIdx, 1);
+            float overdrive = getCachedParam (chanIdx, 2);
 
             double speedRatio = std::pow (2.0, tuning / 12.0);
 
-            // Safe double-to-float envelope decay calculations
             double decayTimeSamples = decay * currentSampleRate;
             float decayCoeff = (decayTimeSamples > 0.0) ? std::exp (-1.0f / static_cast<float> (decayTimeSamples)) : 0.0f;
 
@@ -356,23 +387,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         if (buffer.getNumChannels() > 0) buffer.addSample (0, sampleIdx, leftMixSum);
         if (buffer.getNumChannels() > 1) buffer.addSample (1, sampleIdx, rightMixSum);
     }
-}
-
-bool TectonicAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
-{
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-   #if ! JucePlugin_IsSynth
-    if (layouts.getMainInputChannelSet() != layouts.getMainOutputChannelSet())
-        return false;
-   #endif
-    return true;
-  #endif
 }
 
 bool TectonicAudioProcessor::hasEditor() const { return true; }
