@@ -87,7 +87,6 @@ TectonicAudioProcessor::TectonicAudioProcessor()
     for (auto& res : drum5_resources) loadBinarySampleToChannel (drumChannels[4], formatManager, res);
     for (auto& res : drum6_resources) loadBinarySampleToChannel (drumChannels[5], formatManager, res);
 
-    // Pre-cache all 48 parameters to avoid heap allocations/string hashes inside processBlock [43]
     for (int i = 0; i < 8; ++i)
     {
         bool isSynth = (i < 2);
@@ -108,7 +107,6 @@ TectonicAudioProcessor::~TectonicAudioProcessor() {}
 
 float TectonicAudioProcessor::getCachedParam (int channelIndex, int paramType) const
 {
-    // Retrieves pre-cached atomic floats in O(1) time without locks or allocations [43]
     auto& cp = cachedParams[channelIndex];
     std::atomic<float>* ptr = nullptr;
 
@@ -183,6 +181,7 @@ void TectonicAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 {
     currentSampleRate = sampleRate;
     lastTotal16thStep = -1;
+    scheduledNoteOffs.clear();
 }
 
 void TectonicAudioProcessor::releaseResources() {}
@@ -192,9 +191,10 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
+    int numSamples = buffer.getNumSamples();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+        buffer.clear (i, 0, numSamples);
 
     bool sequencerTriggeredThisBlock = false;
     double bpm = 120.0;
@@ -216,7 +216,26 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
     }
 
-    for (int sampleIdx = 0; sampleIdx < buffer.getNumSamples(); ++sampleIdx)
+    // --- Part A: Aligned, Safe MIDI Note-Off Scheduler [1.2.1] ---
+    juce::MidiBuffer processedMidi;
+    for (auto it = scheduledNoteOffs.begin(); it != scheduledNoteOffs.end();)
+    {
+        it->second -= numSamples;
+        if (it->second <= 0)
+        {
+            // Trigger note-offs strictly within the valid range of the current block [1.2.1]
+            int safeOffset = juce::jlimit (0, numSamples - 1, it->second + numSamples);
+            processedMidi.addEvent (juce::MidiMessage::noteOff (1, it->first), safeOffset);
+            it = scheduledNoteOffs.erase (it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // --- Part B: Sequencer and Audio Playback Loop ---
+    for (int sampleIdx = 0; sampleIdx < numSamples; ++sampleIdx)
     {
         float leftMixSum = 0.0f;
         float rightMixSum = 0.0f;
@@ -230,7 +249,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             {
                 lastTotal16thStep = currentTotalStep;
 
-                // A. Synths
+                // 1. Synths (MIDI triggers)
                 for (int synthIdx = 1; synthIdx <= 2; ++synthIdx)
                 {
                     int chanIdx = synthIdx - 1;
@@ -238,7 +257,6 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     if (syn.isMuted.load()) 
                         continue;
 
-                    // Allocation-free pre-cached parameter fetches
                     int steps    = static_cast<int> (getCachedParam (chanIdx, 3));
                     int triggers = static_cast<int> (getCachedParam (chanIdx, 4));
                     int offset   = static_cast<int> (getCachedParam (chanIdx, 5));
@@ -256,23 +274,26 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                                 if (juce::Random::getSystemRandom().nextFloat() <= density)
                                 {
                                     int noteToPlay = static_cast<int> (rootNote);
-                                    midiMessages.addEvent (juce::MidiMessage::noteOn (1, noteToPlay, 0.8f), sampleIdx);
-                                    midiMessages.addEvent (juce::MidiMessage::noteOff (1, noteToPlay), sampleIdx + 2000);
+                                    
+                                    // Add the Note-On safely to the current block timeframe [1.2.1]
+                                    processedMidi.addEvent (juce::MidiMessage::noteOn (1, noteToPlay, 0.8f), sampleIdx);
+
+                                    // Queue the Note-Off to be executed in 2000 samples safely [1.2.1]
+                                    scheduledNoteOffs.push_back ({ noteToPlay, 2000 });
                                 }
                             }
                         }
                     }
                 }
 
-                // B. Drums
+                // 2. Drums (Sample triggers)
                 for (int drumIdx = 1; drumIdx <= 6; ++drumIdx)
                 {
-                    int chanIdx = drumIdx + 1; // Maps Drum 1 to 6 (indices 2 to 7)
+                    int chanIdx = drumIdx + 1; 
                     auto& drum = drumChannels[drumIdx - 1];
                     if (drum.isMuted.load()) 
                         continue;
 
-                    // Allocation-free pre-cached parameter fetches
                     int steps    = static_cast<int> (getCachedParam (chanIdx, 3));
                     int triggers = static_cast<int> (getCachedParam (chanIdx, 4));
                     int offset   = static_cast<int> (getCachedParam (chanIdx, 5));
@@ -297,6 +318,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             }
         }
 
+        // 3. Audio Voice Mix rendering
         for (int d = 0; d < 6; ++d)
         {
             auto& chan = drumChannels[d];
@@ -308,9 +330,8 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 continue;
 
             int numFrames = sampleBuffer->getNumSamples();
-            int chanIdx = d + 2; // Maps Drum 1 to 6 (indices 2 to 7)
+            int chanIdx = d + 2; 
 
-            // Read pre-cached real-time parameters [43]
             float tuning    = getCachedParam (chanIdx, 0);
             float decay     = getCachedParam (chanIdx, 1);
             float overdrive = getCachedParam (chanIdx, 2);
@@ -387,6 +408,17 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         if (buffer.getNumChannels() > 0) buffer.addSample (0, sampleIdx, leftMixSum);
         if (buffer.getNumChannels() > 1) buffer.addSample (1, sampleIdx, rightMixSum);
     }
+
+    // Merge generated note streams securely back to DAW MIDI buffer [1.2.1]
+    midiMessages.swapWith (processedMidi);
+}
+
+bool TectonicAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+    return true;
 }
 
 bool TectonicAudioProcessor::hasEditor() const { return true; }
