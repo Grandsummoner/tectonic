@@ -4,12 +4,11 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
     : processor (p), index (channelIndex), isSynth (isSynthChannel)
 {
     display.setFont (juce::Font ("Courier New", 28.0f, juce::Font::bold));
-    display.setJustificationType (juce::Justification::centered);
+    display.setJustificationType (juce::Justification::centred);
     display.setColour (juce::Label::textColourId, isSynth ? juce::Colours::limegreen : juce::Colours::red);
     display.setColour (juce::Label::backgroundColourId, juce::Colours::black);
     addAndMakeVisible (display);
 
-    // Make display forward clicks down to the TectonicChannel component
     display.setInterceptsMouseClicks (false, false);
 
     for (int i = 0; i < 3; ++i)
@@ -26,17 +25,14 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
     buttonTop.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonTop.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     
-    // Top button triggers single-shot (unfocused) or randomizes samples (focused) [1]
     buttonTop.onClick = [this]() {
         if (!isFocused)
         {
-            // Unfocused: Single Shot trigger
             if (!isSynth)
                 processor.drumChannels[index - 2].trigger();
         }
         else
         {
-            // Focused: Randomize active sample within channel pool
             if (!isSynth)
             {
                 processor.drumChannels[index - 2].selectRandomSample();
@@ -49,11 +45,9 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
     buttonBottom.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonBottom.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
 
-    // Mute/Unmute state updates standard performance states
     buttonBottom.onClick = [this]() {
         if (!isFocused)
         {
-            // Unfocused: Toggle Mute
             isMuted = !isMuted;
             buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
             
@@ -64,11 +58,9 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         }
     };
 
-    // Momentary trigger tracking for inverse fills (only active when focused) [1]
     buttonBottom.onStateChange = [this]() {
         if (isFocused && !isSynth)
         {
-            // Set Inverted Fill active on the DSP thread while button is pressed down [1]
             processor.drumChannels[index - 2].isFillActive.store (buttonBottom.isDown());
         }
     };
@@ -83,7 +75,6 @@ void TectonicChannel::paint (juce::Graphics& g)
     auto bounds = getLocalBounds();
     auto width = bounds.getWidth();
 
-    // Dim column slightly if another channel has active focus [1.2.1]
     bool anyChannelFocused = false;
     if (auto* parent = getParentComponent())
     {
@@ -95,7 +86,7 @@ void TectonicChannel::paint (juce::Graphics& g)
     }
 
     if (anyChannelFocused && !isFocused)
-        g.fillAll (juce::Colours::black.withAlpha (0.25f)); // Subtle dim shadow
+        g.fillAll (juce::Colours::black.withAlpha (0.25f));
 
     g.setColour (isFocused ? juce::Colours::cyan : (isSynth ? juce::Colours::limegreen : juce::Colours::red));
     g.fillEllipse (width / 2.0f - 4.0f, 106.0f, 8.0f, 8.0f);
@@ -120,7 +111,6 @@ void TectonicChannel::resized()
 
 void TectonicChannel::mouseDown (const juce::MouseEvent& event)
 {
-    // If user clicked inside the 7-segment display boundaries, fire the focus event
     if (display.getBounds().contains (event.getPosition()))
     {
         if (onFocusRequested != nullptr)
@@ -133,7 +123,6 @@ void TectonicChannel::setFocusState (bool shouldBeFocused)
     isFocused = shouldBeFocused;
     updateBindings();
     
-    // Reset button states for focus change
     buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
     
     repaint();
@@ -148,9 +137,9 @@ void TectonicChannel::updateBindings()
 
     if (isFocused)
     {
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_steps", knobs[0]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_triggers", knobs[1]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_offset", knobs[2]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_steps", knobs[0]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_triggers", knobs[1]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_offset", knobs[2]));
         
         buttonTop.setButtonText ("RND");
         buttonBottom.setButtonText ("FIL");
@@ -162,9 +151,9 @@ void TectonicChannel::updateBindings()
     }
     else
     {
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_param1", knobs[0]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_param2", knobs[1]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (apvts, prefix + juce::String (chNumber) + "_param3", knobs[2]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param1", knobs[0]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param2", knobs[1]));
+        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param3", knobs[2]));
         
         buttonTop.setButtonText ("TRG");
         buttonBottom.setButtonText ("MUT");
