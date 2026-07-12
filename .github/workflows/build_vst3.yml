@@ -27,9 +27,9 @@ jobs:
       with:
         cmake-version: '3.22.x'
 
-    # 3. Configure the build directory for Release
+    # 3. Configure CMake explicitly forcing the Visual Studio 2022 x64 compiler
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      run: cmake -G "Visual Studio 17 2022" -A x64 -B build -DCMAKE_BUILD_TYPE=Release
 
     # 4. Compile the plugin target
     - name: Build Plugin
