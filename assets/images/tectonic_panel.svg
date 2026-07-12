@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <!-- Metallic Brushed Aluminum Gradient -->
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F2F2F2" />
+      <stop offset="30%" stop-color="#EAEAEA" />
+      <stop offset="70%" stop-color="#E1E1E1" />
+      <stop offset="100%" stop-color="#D5D5D5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main Background Plate -->
+  <rect x="0" y="0" width="800" height="600" fill="url(#metalGrad)" />
+  
+  <!-- Top Branding Section -->
+  <!-- Left Horizontal Line -->
+  <line x1="40" y1="40" x2="270" y2="40" stroke="#000000" stroke-width="2" />
+  
+  <!-- Right Horizontal Line -->
+  <line x1="530" y1="40" x2="760" y2="40" stroke="#000000" stroke-width="2" />
+  
+  <!-- TECTONIC Title -->
+  <text x="400" y="50" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="900" font-size="34" fill="#000000" text-anchor="middle" letter-spacing="8">TECTONIC</text>
+
+  <!-- Channel Labels (Y = 80) -->
+  <text x="50" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">SYNTH 1</text>
+  <text x="150" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">SYNTH 2</text>
+  <text x="250" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 1</text>
+  <text x="350" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 2</text>
+  <text x="450" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 3</text>
+  <text x="550" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 4</text>
+  <text x="650" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 5</text>
+  <text x="750" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="bold" font-size="11" fill="#000000" text-anchor="middle" letter-spacing="1">DRUM 6</text>
+
+  <!-- Thin Vertical Dividers (From Y = 95 to Y = 530) -->
+  <line x1="100" y1="95" x2="100" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="200" y1="95" x2="200" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="300" y1="95" x2="300" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="400" y1="95" x2="400" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="500" y1="95" x2="500" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="600" y1="95" x2="600" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+  <line x1="700" y1="95" x2="700" y2="530" stroke="#000000" stroke-width="0.75" opacity="0.6" />
+</svg>
