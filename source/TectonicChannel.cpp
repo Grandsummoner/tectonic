@@ -11,16 +11,25 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
 
     display.setInterceptsMouseClicks (false, false);
 
+    // Initialize both sets of Sliders
     for (int i = 0; i < 3; ++i)
     {
-        auto& knob = knobs[i];
-        knob.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-        knob.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-        knob.setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
-        knob.setColour (juce::Slider::thumbColourId, juce::Colours::whitesmoke);
-        addAndMakeVisible (knob);
+        // 1. Sound Knobs
+        knobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        knobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        knobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
+        knob[i].setColour (juce::Slider::thumbColourId, juce::Colours::whitesmoke);
+        addAndMakeVisible (knobs[i]);
+
+        // 2. Sequencer Knobs
+        seqKnobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        seqKnobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        seqKnobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
+        seqKnobs[i].setColour (juce::Slider::thumbColourId, juce::Colours::cyan);
+        addAndMakeVisible (seqKnobs[i]);
     }
 
+    // Top Button Configuration
     addAndMakeVisible (buttonTop);
     buttonTop.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonTop.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
@@ -41,6 +50,7 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         }
     };
 
+    // Bottom Button Configuration
     addAndMakeVisible (buttonBottom);
     buttonBottom.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonBottom.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
@@ -65,7 +75,31 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         }
     };
 
-    updateBindings();
+    // Initialize Parameter Attachments exactly once to prevent memory re-binding crashes [1.2.1]
+    juce::String prefix = isSynth ? "synth" : "drum";
+    int chNumber = isSynth ? (index + 1) : (index - 1);
+
+    // 1. Link Sound parameter attachments [1.2.1]
+    for (int i = 0; i < 3; ++i)
+    {
+        knobAttachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+            processor.apvts, prefix + juce::String (chNumber) + "_param" + juce::String (i + 1), knobs[i]
+        );
+    }
+
+    // 2. Link Sequencer parameter attachments [1.2.1]
+    seqKnobAttachments[0] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        processor.apvts, prefix + juce::String (chNumber) + "_steps", seqKnobs[0]
+    );
+    seqKnobAttachments[1] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        processor.apvts, prefix + juce::String (chNumber) + "_triggers", seqKnobs[1]
+    );
+    seqKnobAttachments[2] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        processor.apvts, prefix + juce::String (chNumber) + "_offset", seqKnobs[2]
+    );
+
+    // Default to unfocused state
+    setFocusState (false);
 }
 
 TectonicChannel::~TectonicChannel() {}
@@ -81,7 +115,8 @@ void TectonicChannel::paint (juce::Graphics& g)
         for (int i = 0; i < parent->getNumChildComponents(); ++i)
         {
             if (auto* chan = dynamic_cast<TectonicChannel*> (parent->getChildComponent (i)))
-                if (chan->getFocusState()) anyChannelFocused = true;
+                if (chan->getFocusState()) 
+                    anyChannelFocused = true;
         }
     }
 
@@ -101,10 +136,16 @@ void TectonicChannel::resized()
 {
     auto xOffset = getLocalBounds().getWidth() / 2;
 
-    display.setBounds      (xOffset - 20, 210, 40, 40);
-    knobs[0].setBounds     (xOffset - 22, 308, 44, 44);
-    knobs[1].setBounds     (xOffset - 22, 363, 44, 44);
-    knobs[2].setBounds     (xOffset - 22, 418, 44, 44);
+    display.setBounds (xOffset - 20, 210, 40, 40);
+    
+    // Position both sets of knobs on top of each other at identical coordinates [1.2.5]
+    for (int i = 0; i < 3; ++i)
+    {
+        int y = 308 + (i * 55);
+        knobs[i].setBounds    (xOffset - 22, y, 44, 44);
+        seqKnobs[i].setBounds (xOffset - 22, y, 44, 44);
+    }
+
     buttonTop.setBounds    (xOffset - 18, 482, 36, 36);
     buttonBottom.setBounds (xOffset - 18, 532, 36, 36);
 }
@@ -121,26 +162,16 @@ void TectonicChannel::mouseDown (const juce::MouseEvent& event)
 void TectonicChannel::setFocusState (bool shouldBeFocused)
 {
     isFocused = shouldBeFocused;
-    updateBindings();
     
-    buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
-    
-    repaint();
-}
-
-void TectonicChannel::updateBindings()
-{
-    attachments.clear();
-
-    juce::String prefix = isSynth ? "synth" : "drum";
-    int chNumber = isSynth ? (index + 1) : (index - 1);
+    // Safe, thread-safe UI toggle layout (replaces attachments.clear()) [1.2.1]
+    for (int i = 0; i < 3; ++i)
+    {
+        knobs[i].setVisible (!isFocused);
+        seqKnobs[i].setVisible (isFocused);
+    }
 
     if (isFocused)
     {
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_steps", knobs[0]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_triggers", knobs[1]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_offset", knobs[2]));
-        
         buttonTop.setButtonText ("RND");
         buttonBottom.setButtonText ("FIL");
         
@@ -151,12 +182,11 @@ void TectonicChannel::updateBindings()
     }
     else
     {
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param1", knobs[0]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param2", knobs[1]));
-        attachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, prefix + juce::String (chNumber) + "_param3", knobs[2]));
-        
         buttonTop.setButtonText ("TRG");
         buttonBottom.setButtonText ("MUT");
         display.setText ("8.", juce::dontSendNotification);
     }
+
+    buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
+    repaint();
 }
