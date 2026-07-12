@@ -41,7 +41,7 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
             if (!isSynth)
             {
                 processor.drumChannels[index - 2].selectRandomSample();
-                display.setText (juce::String (processor.drumChannels[index - 2].currentSampleIndex + 1) + ".", juce::dontSendNotification);
+                display.setText (juce::String (processor.drumChannels[index - 2].currentSampleIndex.load() + 1) + ".", juce::dontSendNotification);
             }
         }
     };
@@ -165,7 +165,7 @@ void TectonicChannel::setFocusState (bool shouldBeFocused)
         buttonBottom.setButtonText ("FIL");
         
         if (!isSynth)
-            display.setText (juce::String (processor.drumChannels[index - 2].currentSampleIndex + 1) + ".", juce::dontSendNotification);
+            display.setText (juce::String (processor.drumChannels[index - 2].currentSampleIndex.load() + 1) + ".", juce::dontSendNotification);
         else
             display.setText ("E.", juce::dontSendNotification);
     }
