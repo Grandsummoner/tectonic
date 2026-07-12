@@ -21,27 +21,23 @@ jobs:
       with:
         submodules: recursive
 
-    # 2. Set up CMake
-    - name: Set up CMake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.22.x'
-
-    # 3. Configure CMake (automatic generator detection finds the active Visual Studio)
+    # 2. Configure CMake (Uses pre-installed modern CMake on the runner to find MSVC automatically)
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      run: |
+        if (Test-Path build) { Remove-Item -Recurse -Force build }
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-    # 4. Compile the plugin target
+    # 3. Compile the plugin target
     - name: Build Plugin
       run: cmake --build build --config Release --parallel 4
 
-    # 5. Compress the VST3 bundle into a single zip file to avoid nested artifact folders
+    # 4. Compress the VST3 bundle into a single zip file to avoid nested artifact folders
     - name: Compress VST3 Artifact
       shell: powershell
       run: |
         Compress-Archive -Path "build/tectonic_Artefacts/Release/VST3/Tectonic.vst3" -DestinationPath "Tectonic_VST3.zip"
 
-    # 6. Upload the single zip archive
+    # 5. Upload the single zip archive
     - name: Upload VST3 Zip
       uses: actions/upload-artifact@v4
       with:
