@@ -21,7 +21,7 @@ jobs:
       with:
         submodules: recursive
 
-    # 2. Configure CMake (Uses pre-installed modern CMake on the runner to find MSVC automatically)
+    # 2. Configure CMake
     - name: Configure CMake
       run: |
         if (Test-Path build) { Remove-Item -Recurse -Force build }
@@ -31,16 +31,16 @@ jobs:
     - name: Build Plugin
       run: cmake --build build --config Release --parallel 4
 
-    # 4. Compress the VST3 bundle into a single zip file to avoid nested artifact folders
-    - name: Compress VST3 Artifact
+    # 4. Extract only the single .vst3 binary from the generated bundle
+    - name: Extract Single VST3 File
       shell: powershell
       run: |
-        Compress-Archive -Path "build/tectonic_Artefacts/Release/VST3/Tectonic.vst3" -DestinationPath "Tectonic_VST3.zip"
+        Copy-Item -Path "build/tectonic_Artefacts/Release/VST3/Tectonic.vst3/Contents/x86_64-win/Tectonic.vst3" -Destination "Tectonic.vst3" -Force
 
-    # 5. Upload the single zip archive
-    - name: Upload VST3 Zip
+    # 5. Upload the single, flat .vst3 file
+    - name: Upload VST3 File
       uses: actions/upload-artifact@v4
       with:
         name: Tectonic_Windows_VST3
-        path: Tectonic_VST3.zip
+        path: Tectonic.vst3
         if-no-files-found: error
