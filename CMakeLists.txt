@@ -27,12 +27,14 @@ juce_add_plugin(tectonic
     COPY_PLUGIN_AFTER_BUILD TRUE           
 )
 
-# Compile source files
+# Compile source files (including TectonicChannel files)
 target_sources(tectonic PRIVATE
     source/PluginProcessor.cpp
     source/PluginProcessor.h
     source/PluginEditor.cpp
     source/PluginEditor.h
+    source/TectonicChannel.cpp
+    source/TectonicChannel.h
 )
 
 # Compile options & optimizations
