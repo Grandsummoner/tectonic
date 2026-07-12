@@ -14,13 +14,8 @@ public:
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
-    bool isBusesLayoutSupported (const BusesLayout& layouts) const override
-    {
-        if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-         && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-            return false;
-        return true;
-    }
+    // Declared only (retains out-of-line body inside cpp to prevent duplicates)
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
@@ -45,6 +40,17 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
+
+    // Structure container definition declared prior to usage in arrays
+    struct ChannelParams
+    {
+        std::atomic<float>* param1 = nullptr;
+        std::atomic<float>* param2 = nullptr;
+        std::atomic<float>* param3 = nullptr;
+        std::atomic<float>* steps  = nullptr;
+        std::atomic<float>* triggers = nullptr;
+        std::atomic<float>* offset   = nullptr;
+    };
 
     // Real-time safe parameter reader
     float getCachedParam (int channelIndex, int paramType) const;
@@ -97,6 +103,7 @@ public:
     std::array<SynthChannel, 2> synthChannels;
     std::array<DrumChannel, 6> drumChannels;
     
+    // Aligned list container of pre-cached parameter pointers
     std::array<ChannelParams, 8> cachedParams;
 
     juce::AudioProcessorValueTreeState apvts;
