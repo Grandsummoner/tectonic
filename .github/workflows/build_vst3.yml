@@ -1,4 +1,39 @@
-- name: Package Flat VST3 Binary Only
+name: Build VST3
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allows you to trigger the build manually from the GitHub Actions tab
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive # Ensures JUCE and other submodules are checked out cleanly
+
+    - name: Set up MSVC (Visual Studio Compiler)
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Install Ninja Build System
+      uses: ashutoshvarma/setup-ninja@master
+      with:
+        version: 1.11.1
+
+    - name: Configure CMake
+      run: |
+        cmake -B Builds -DCMAKE_BUILD_TYPE=Release -G Ninja .
+
+    - name: Build VST3 Target
+      run: |
+        cmake --build Builds --config Release --parallel
+
+    - name: Package Flat VST3 Binary Only
       shell: bash
       run: |
         # Create a clean folder for our final download
@@ -15,3 +50,9 @@
         
         echo "Found compiled binary at: $BINARY_PATH"
         cp "$BINARY_PATH" "Artifacts/VST3/Tectonic.vst3"
+
+    - name: Upload Single-File VST3 Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tectonic-VST3-Windows
+        path: Artifacts/VST3/Tectonic.vst3
