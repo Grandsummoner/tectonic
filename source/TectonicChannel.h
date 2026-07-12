@@ -1,23 +1,31 @@
 #pragma once
 #include <JuceHeader.h>
+#include "PluginProcessor.h"
 
 class TectonicChannel : public juce::Component
 {
 public:
-    TectonicChannel (juce::AudioProcessorValueTreeState& vts, int channelIndex, bool isSynthChannel);
+    TectonicChannel (TectonicAudioProcessor& p, int channelIndex, bool isSynthChannel);
     ~TectonicChannel() override;
 
     void paint (juce::Graphics& g) override;
     void resized() override;
+    
     void setFocusState (bool shouldBeFocused);
+    bool getFocusState() const { return isFocused; }
+
+    // Callback to request focus from parent editor when 7-segment label is clicked
+    std::function<void(int)> onFocusRequested;
 
 private:
     void updateBindings();
+    void mouseDown (const juce::MouseEvent& event) override;
 
-    juce::AudioProcessorValueTreeState& apvts;
+    TectonicAudioProcessor& processor;
     int index;
     bool isSynth;
     bool isFocused = false;
+    bool isMuted = false;
 
     juce::Label display;
     juce::Slider knobs[3];
