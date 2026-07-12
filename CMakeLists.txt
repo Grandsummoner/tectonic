@@ -1,76 +1,57 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.22)
 
-# Added 'C' alongside 'CXX' to resolve compile errors
-project(NavyArp VERSION 1.0.0 LANGUAGES C CXX)
+project(tectonic VERSION 1.0.0 LANGUAGES CXX)
 
-# 1. Include your local JUCE directory
+# Set C++ Standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable JUCE CMake API
 add_subdirectory(JUCE)
 
-# 2. Add and define the Navy Arp plugin targets (STRICTLY VST3 ONLY)
-juce_add_plugin(NavyArp
-    COMPANY_NAME "Navy Audio"
-    BUNDLE_ID "com.navyaudio.navyarp"       # Added to resolve the spaces warning
-    PLUGIN_MANUFACTURER_CODE "Manu"         # Changed from hex to clean 4-char string literal
-    PLUGIN_CODE "Dgav"                      # Changed from hex to clean 4-char string literal
-    FORMATS VST3                            # Strictly VST3 format only
-    PRODUCT_NAME "Navy Arp"
-    PLUGIN_NAME "Navy Arp"
-    IS_SYNTH TRUE
-    NEEDS_MIDI_INPUT TRUE                  # Corrected argument name to enable MIDI In
-    NEEDS_MIDI_OUTPUT TRUE                 # Corrected argument name to enable MIDI Out
-    COPY_PLUGIN_AFTER_BUILD FALSE           # Disable default multi-folder copy step
+# Add compiled binary assets (your SVG background)
+juce_add_binary_data(TectonicAssets
+    SOURCES
+        assets/images/tectonic_panel.svg
 )
 
-# 3. Mandatory generator macro call to create JuceHeader.h for your target
-juce_generate_juce_header(NavyArp)
-
-# 4. Custom post-build step to copy ONLY the single flat VST3 file to your custom folder
-# Safely creates the directory path first to prevent GitHub Action runner failures [43]
-add_custom_command(TARGET NavyArp_VST3 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "D:/Music - Software/VST"
-    COMMAND ${CMAKE_COMMAND} -E copy
-    "$<TARGET_FILE:NavyArp_VST3>"
-    "D:/Music - Software/VST/Navy Arp.vst3"
+# Declare the audio plugin
+juce_add_plugin(tectonic
+    COMPANY_NAME "Grandsummoner"
+    PLUGIN_NAME "Tectonic"
+    PRODUCT_NAME "Tectonic"
+    FORMATS VST3 AU Standalone
+    IS_SYNTH TRUE                          
+    NEEDS_MIDI_INPUT TRUE                  
+    NEEDS_MIDI_OUTPUT TRUE                 
+    COPY_PLUGIN_AFTER_BUILD TRUE           
 )
 
-# 5. Source Files mapping
-target_sources(NavyArp PRIVATE
-    source/AppTheme.h
-    source/ChromaCapsLookAndFeel.cpp
-    source/ChromaCapsLookAndFeel.h
-    source/OledDisplay.cpp
-    source/OledDisplay.h
-    source/PluginEditor.cpp
-    source/PluginEditor.h
+# Compile source files
+target_sources(tectonic PRIVATE
     source/PluginProcessor.cpp
     source/PluginProcessor.h
+    source/PluginEditor.cpp
+    source/PluginEditor.h
 )
 
-# 6. Global compiler definitions
-target_compile_definitions(NavyArp
+# Compile options & optimizations
+target_compile_definitions(tectonic
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
-        JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1 # Added to bypass parameter automation ID conflict checks
+        JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
-# NEW: Add and define binary data target to compile our background asset [1.1.2, 1.1.8]
-juce_add_binary_data(NavyArpAssets
-    SOURCES
-        assets/images/panel.png
-)
-
-# 7. Library dependencies
-target_link_libraries(NavyArp
+# Link modules and the compiled assets
+target_link_libraries(tectonic
     PRIVATE
-        NavyArpAssets       # NEW: Link compiled asset target here [1.1.2]
+        TectonicAssets
         juce::juce_audio_utils
         juce::juce_audio_processors
-        juce::juce_dsp
         juce::juce_gui_extra
         juce::juce_gui_basics
         juce::juce_graphics
         juce::juce_events
-        juce::juce_data_structures
         juce::juce_core
 )
