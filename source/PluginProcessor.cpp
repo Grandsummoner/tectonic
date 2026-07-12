@@ -268,7 +268,12 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                         auto pattern = generateEuclideanPattern (steps, triggers, offset);
                         if (!pattern.empty())
                         {
-                            if (pattern[currentTotalStep % steps])
+                            // Wrap negative indices safely
+                            int patternIdx = currentTotalStep % steps;
+                            if (patternIdx < 0)
+                                patternIdx += steps;
+
+                            if (pattern[patternIdx])
                             {
                                 float rootNote = getCachedParam (chanIdx, 0);
                                 float density  = getCachedParam (chanIdx, 2);
@@ -301,7 +306,12 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                         auto pattern = generateEuclideanPattern (steps, triggers, offset);
                         if (!pattern.empty())
                         {
-                            bool shouldTrigger = pattern[currentTotalStep % steps];
+                            // Wrap negative indices safely
+                            int patternIdx = currentTotalStep % steps;
+                            if (patternIdx < 0)
+                                patternIdx += steps;
+
+                            bool shouldTrigger = pattern[patternIdx];
 
                             if (drum.isFillActive.load())
                                 shouldTrigger = !shouldTrigger;
@@ -380,7 +390,7 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             leftSample *= currentEnv;
             rightSample *= currentEnv;
 
-            // Decay the envelope level atomically [1]
+            // Decay the envelope level atomically
             float nextEnv = currentEnv * decayCoeff;
             chan.envLevel.store (nextEnv);
             
@@ -423,9 +433,15 @@ void TectonicAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
 bool TectonicAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
+    // Output must be mono or stereo
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
+
+    // Reject layout configurations containing active input buses (strict synth setup)
+    if (! layouts.getMainInputChannelSet().isDisabled())
+        return false;
+
     return true;
 }
 
