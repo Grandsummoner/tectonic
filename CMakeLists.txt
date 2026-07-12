@@ -57,6 +57,9 @@ juce_add_plugin(tectonic
     COPY_PLUGIN_AFTER_BUILD TRUE           
 )
 
+# Generate standard JuceHeader.h for your source files
+juce_generate_juce_header(tectonic)
+
 # Compile source files (including TectonicChannel files)
 target_sources(tectonic PRIVATE
     source/PluginProcessor.cpp
