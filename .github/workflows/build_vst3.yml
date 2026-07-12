@@ -21,7 +21,7 @@ jobs:
       with:
         submodules: recursive
 
-    # 2. Configure CMake
+    # 2. Configure CMake (Automatic generator detection uses the active Visual Studio version)
     - name: Configure CMake
       run: |
         if (Test-Path build) { Remove-Item -Recurse -Force build }
@@ -31,13 +31,13 @@ jobs:
     - name: Build Plugin
       run: cmake --build build --config Release --parallel 4
 
-    # 4. Extract only the single .vst3 binary from the generated bundle
+    # 4. Extract ONLY the single, standalone .vst3 binary from the generated bundle
     - name: Extract Single VST3 File
       shell: powershell
       run: |
         Copy-Item -Path "build/tectonic_Artefacts/Release/VST3/Tectonic.vst3/Contents/x86_64-win/Tectonic.vst3" -Destination "Tectonic.vst3" -Force
 
-    # 5. Upload the single, flat .vst3 file
+    # 5. Upload ONLY the single, flat .vst3 file (no folders)
     - name: Upload VST3 File
       uses: actions/upload-artifact@v4
       with:
