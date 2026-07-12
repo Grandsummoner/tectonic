@@ -60,11 +60,12 @@ public:
     struct DrumChannel
     {
         std::vector<juce::AudioSampleBuffer> samplePool;
-        int currentSampleIndex = 0;
         
-        double readPointer = 0.0;
-        bool isPlaying = false;
-        float envLevel = 0.0f;
+        // Upgraded to std::atomic to eliminate multi-threading data races
+        std::atomic<int> currentSampleIndex { 0 };
+        std::atomic<double> readPointer { 0.0 };
+        std::atomic<bool> isPlaying { false };
+        std::atomic<float> envLevel { 0.0f };
 
         std::atomic<bool> isMuted { false };
         std::atomic<bool> isFillActive { false };
@@ -74,9 +75,9 @@ public:
             if (samplePool.empty()) 
                 return;
 
-            readPointer = 0.0;
-            isPlaying = true;
-            envLevel = 1.0f;
+            readPointer.store (0.0);
+            isPlaying.store (true);
+            envLevel.store (1.0f);
         }
 
         void selectRandomSample()
@@ -85,15 +86,16 @@ public:
                 return;
 
             auto& random = juce::Random::getSystemRandom();
-            currentSampleIndex = random.nextInt (static_cast<int> (samplePool.size()));
+            currentSampleIndex.store (random.nextInt (static_cast<int> (samplePool.size())));
         }
 
         const juce::AudioSampleBuffer* getActiveBuffer() const
         {
-            if (samplePool.empty() || currentSampleIndex < 0 || currentSampleIndex >= samplePool.size())
+            int idx = currentSampleIndex.load();
+            if (samplePool.empty() || idx < 0 || idx >= samplePool.size())
                 return nullptr;
 
-            return &samplePool[currentSampleIndex];
+            return &samplePool[idx];
         }
     };
 
