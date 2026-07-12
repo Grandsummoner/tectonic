@@ -11,17 +11,14 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
 
     display.setInterceptsMouseClicks (false, false);
 
-    // Initialize both sets of Sliders
     for (int i = 0; i < 3; ++i)
     {
-        // 1. Sound Knobs
         knobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         knobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
         knobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
-        knob[i].setColour (juce::Slider::thumbColourId, juce::Colours::whitesmoke);
+        knobs[i].setColour (juce::Slider::thumbColourId, juce::Colours::whitesmoke);
         addAndMakeVisible (knobs[i]);
 
-        // 2. Sequencer Knobs
         seqKnobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         seqKnobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
         seqKnobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
@@ -29,7 +26,6 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         addAndMakeVisible (seqKnobs[i]);
     }
 
-    // Top Button Configuration
     addAndMakeVisible (buttonTop);
     buttonTop.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonTop.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
@@ -50,7 +46,6 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         }
     };
 
-    // Bottom Button Configuration
     addAndMakeVisible (buttonBottom);
     buttonBottom.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
     buttonBottom.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
@@ -75,11 +70,9 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         }
     };
 
-    // Initialize Parameter Attachments exactly once to prevent memory re-binding crashes [1.2.1]
     juce::String prefix = isSynth ? "synth" : "drum";
     int chNumber = isSynth ? (index + 1) : (index - 1);
 
-    // 1. Link Sound parameter attachments [1.2.1]
     for (int i = 0; i < 3; ++i)
     {
         knobAttachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
@@ -87,7 +80,6 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         );
     }
 
-    // 2. Link Sequencer parameter attachments [1.2.1]
     seqKnobAttachments[0] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         processor.apvts, prefix + juce::String (chNumber) + "_steps", seqKnobs[0]
     );
@@ -98,7 +90,6 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
         processor.apvts, prefix + juce::String (chNumber) + "_offset", seqKnobs[2]
     );
 
-    // Default to unfocused state
     setFocusState (false);
 }
 
@@ -138,7 +129,6 @@ void TectonicChannel::resized()
 
     display.setBounds (xOffset - 20, 210, 40, 40);
     
-    // Position both sets of knobs on top of each other at identical coordinates [1.2.5]
     for (int i = 0; i < 3; ++i)
     {
         int y = 308 + (i * 55);
@@ -163,7 +153,6 @@ void TectonicChannel::setFocusState (bool shouldBeFocused)
 {
     isFocused = shouldBeFocused;
     
-    // Safe, thread-safe UI toggle layout (replaces attachments.clear()) [1.2.1]
     for (int i = 0; i < 3; ++i)
     {
         knobs[i].setVisible (!isFocused);
