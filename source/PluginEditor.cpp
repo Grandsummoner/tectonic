@@ -4,30 +4,31 @@
 TectonicAudioProcessorEditor::TectonicAudioProcessorEditor (TectonicAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    // Set your default window size (matching the SVG's aspect ratio)
+    // Fix layout scale (matching SVG coordinate ratio)
     setSize (800, 600);
 
-    // 1. Load the compiled SVG data from your BinaryData
+    // Load background SVG
     auto xml = juce::XmlDocument::parse (BinaryData::tectonic_panel_svg);
-    
     if (xml != nullptr)
-    {
-        // 2. Parse the XML structure into a Drawable vector object
         backgroundSvg = juce::Drawable::createFromSVG (*xml);
+
+    // Initialize our 8 channels
+    for (int i = 0; i < 8; ++i)
+    {
+        // First 2 are Synths, remaining 6 are Drums
+        bool isSynth = (i < 2);
+        
+        channels[i] = std::make_unique<TectonicChannel> (audioProcessor.apvts, i, isSynth);
+        addAndMakeVisible (*channels[i]);
     }
 }
 
-TectonicAudioProcessorEditor::~TectonicAudioProcessorEditor()
-{
-}
+TectonicAudioProcessorEditor::~TectonicAudioProcessorEditor() {}
 
 void TectonicAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // Clear the background first
     g.fillAll (juce::Colours::darkgrey);
 
-    // 3. Draw the vector panel. It automatically scales to fit whatever 
-    // bounds are set, keeping your vector art razor-sharp at any zoom level!
     if (backgroundSvg != nullptr)
     {
         backgroundSvg->drawWithin (g, getLocalBounds().toFloat(), 
@@ -37,6 +38,13 @@ void TectonicAudioProcessorEditor::paint (juce::Graphics& g)
 
 void TectonicAudioProcessorEditor::resized()
 {
-    // This is where you will set the positions of your dynamic 
-    // knobs, buttons, and jacks relative to the window size.
+    // Divide window into 8 equal columns [1.2.5]
+    auto bounds = getLocalBounds();
+    int colWidth = bounds.getWidth() / 8;
+
+    for (int i = 0; i < 8; ++i)
+    {
+        // Position each channel exactly within its 100px boundary
+        channels[i]->setBounds (i * colWidth, 0, colWidth, bounds.getHeight());
+    }
 }
