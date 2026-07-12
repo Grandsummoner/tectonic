@@ -3,6 +3,9 @@
 TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, bool isSynthChannel)
     : processor (p), index (channelIndex), isSynth (isSynthChannel)
 {
+    // Apply custom styling instantly to all sub-components
+    setLookAndFeel (&customLookAndFeel);
+
     display.setFont (juce::Font ("Courier New", 28.0f, juce::Font::bold));
     display.setJustificationType (juce::Justification::centred);
     display.setColour (juce::Label::textColourId, isSynth ? juce::Colours::limegreen : juce::Colours::red);
@@ -11,24 +14,25 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
 
     display.setInterceptsMouseClicks (false, false);
 
+    // Apply glowing colored indicators matching channel modes
+    juce::Colour activeColor = isSynth ? juce::Colours::limegreen : juce::Colours::red;
+
     for (int i = 0; i < 3; ++i)
     {
         knobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         knobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-        knobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
         knobs[i].setColour (juce::Slider::thumbColourId, juce::Colours::whitesmoke);
         addAndMakeVisible (knobs[i]);
 
         seqKnobs[i].setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         seqKnobs[i].setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-        seqKnobs[i].setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::black);
         seqKnobs[i].setColour (juce::Slider::thumbColourId, juce::Colours::cyan);
         addAndMakeVisible (seqKnobs[i]);
     }
 
     addAndMakeVisible (buttonTop);
-    buttonTop.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
-    buttonTop.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    buttonTop.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF1A1A1A));
+    buttonTop.setColour (juce::TextButton::textColourOffId, juce::Colours::whitesmoke);
     
     buttonTop.onClick = [this]() {
         if (!isFocused)
@@ -47,14 +51,15 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
     };
 
     addAndMakeVisible (buttonBottom);
-    buttonBottom.setColour (juce::TextButton::buttonColourId, juce::Colours::black);
-    buttonBottom.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    buttonBottom.setColour (juce::TextButton::buttonColourId, juce::Colour (0xFF1A1A1A));
+    buttonBottom.setColour (juce::TextButton::textColourOffId, juce::Colours::whitesmoke);
 
     buttonBottom.onClick = [this]() {
         if (!isFocused)
         {
             isMuted = !isMuted;
-            buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
+            buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colour (0xFF1A1A1A));
+            buttonBottom.setColour (juce::TextButton::textColourOffId, isMuted ? juce::Colours::white : juce::Colours::whitesmoke);
             
             if (isSynth)
                 processor.synthChannels[index].isMuted.store (isMuted);
@@ -93,7 +98,10 @@ TectonicChannel::TectonicChannel (TectonicAudioProcessor& p, int channelIndex, b
     setFocusState (false);
 }
 
-TectonicChannel::~TectonicChannel() {}
+TectonicChannel::~TectonicChannel() 
+{
+    setLookAndFeel (nullptr); // Avoid dangling LookAndFeel pointer crashes on teardown
+}
 
 void TectonicChannel::paint (juce::Graphics& g)
 {
@@ -111,16 +119,27 @@ void TectonicChannel::paint (juce::Graphics& g)
         }
     }
 
+    // Dynamic background dimming
     if (anyChannelFocused && !isFocused)
-        g.fillAll (juce::Colours::black.withAlpha (0.25f));
+        g.fillAll (juce::Colours::black.withAlpha (0.15f));
 
-    g.setColour (isFocused ? juce::Colours::cyan : (isSynth ? juce::Colours::limegreen : juce::Colours::red));
+    // Glow ring behind status LED
+    juce::Colour activeColor = isFocused ? juce::Colours::cyan : (isSynth ? juce::Colours::limegreen : juce::Colours::red);
+    g.setColour (activeColor.withAlpha (0.15f));
+    g.fillEllipse (width / 2.0f - 7.0f, 103.0f, 14.0f, 14.0f);
+
+    // Dynamic status indicator LED
+    g.setColour (activeColor);
     g.fillEllipse (width / 2.0f - 4.0f, 106.0f, 8.0f, 8.0f);
 
+    // Decorative Hardware style screw head
     g.setColour (juce::Colours::black);
     g.fillEllipse (width / 2.0f - 16.0f, 144.0f, 32.0f, 32.0f);
-    g.setColour (juce::Colours::grey);
+    g.setColour (juce::Colours::grey.withAlpha (0.5f));
     g.fillEllipse (width / 2.0f - 10.0f, 150.0f, 20.0f, 20.0f);
+    g.setColour (juce::Colour (0xFF1A1A1A));
+    g.drawEllipse (width / 2.0f - 10.0f, 150.0f, 20.0f, 20.0f, 1.0f);
+    g.drawLine (width / 2.0f - 6.0f, 160.0f, width / 2.0f + 6.0f, 160.0f, 1.5f); // Horizontal screw slot
 }
 
 void TectonicChannel::resized()
@@ -176,6 +195,7 @@ void TectonicChannel::setFocusState (bool shouldBeFocused)
         display.setText ("8.", juce::dontSendNotification);
     }
 
-    buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colours::black);
+    buttonBottom.setColour (juce::TextButton::buttonColourId, isMuted ? juce::Colours::darkred : juce::Colour (0xFF1A1A1A));
+    buttonBottom.setColour (juce::TextButton::textColourOffId, isMuted ? juce::Colours::white : juce::Colours::whitesmoke);
     repaint();
 }
