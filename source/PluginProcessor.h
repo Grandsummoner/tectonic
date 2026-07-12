@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <vector>
 #include <array>
+#include <atomic>
 
 class TectonicAudioProcessor  : public juce::AudioProcessor
 {
@@ -36,13 +37,16 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Static layout helper function to generate our parameter map
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    
-    // Generates a Euclidean pattern using an optimized division algorithm
     static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
 
-    // Dynamic drum channel structure containing DSP state
+    // Synth Channel Struct (Supports Muting)
+    struct SynthChannel
+    {
+        std::atomic<bool> isMuted { false };
+    };
+
+    // Upgraded Drum Channel Struct (Supports Muting & Momentary Fill)
     struct DrumChannel
     {
         std::vector<juce::AudioSampleBuffer> samplePool;
@@ -50,8 +54,11 @@ public:
         
         double readPointer = 0.0;
         bool isPlaying = false;
-        
         float envLevel = 0.0f;
+
+        // Thread-safe performance flags
+        std::atomic<bool> isMuted { false };
+        std::atomic<bool> isFillActive { false };
 
         void trigger()
         {
@@ -60,7 +67,7 @@ public:
 
             readPointer = 0.0;
             isPlaying = true;
-            envLevel = 1.0f; // Reset envelope back to full volume
+            envLevel = 1.0f;
         }
 
         void selectRandomSample()
@@ -81,19 +88,13 @@ public:
         }
     };
 
-    // Array of 6 independent drum channels
+    std::array<SynthChannel, 2> synthChannels;
     std::array<DrumChannel, 6> drumChannels;
-
-    // ValueTree containing all parameter data
     juce::AudioProcessorValueTreeState apvts;
 
 private:
     double currentSampleRate = 44100.0;
-    
-    // Track the last processed 16th-note step across process blocks
     int lastTotal16thStep = -1;
-
-    // Format manager to read WAV sample data
     juce::AudioFormatManager formatManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessor)
