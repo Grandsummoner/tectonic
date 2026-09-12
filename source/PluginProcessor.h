@@ -4,114 +4,107 @@
 #include <vector>
 #include <array>
 #include <atomic>
+#include <memory>
 
-class TectonicAudioProcessor  : public juce::AudioProcessor
+/**
+ * Core audio processor for Tectonic drum sequencer.
+ * Handles:
+ * - APVTS parameter management
+ * - Euclidean rhythm pattern generation
+ * - Audio buffer playback and mixing
+ * - MIDI/playhead synchronization
+ */
+class TectonicAudioProcessor : public juce::AudioProcessor
 {
 public:
     TectonicAudioProcessor();
     ~TectonicAudioProcessor() override;
 
-    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    // Standard AudioProcessor methods
+    void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-
-    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
-
-    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
+    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
-    bool hasEditor() const override;
-
+    bool hasEditor() const override { return true; }
     const juce::String getName() const override;
+    bool acceptsMidi() const override { return true; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
 
-    bool acceptsMidi() const override;
-    bool producesMidi() const override;
-    bool isMidiEffect() const override;
-    double getTailLengthSeconds() const override;
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int index) override {}
+    const juce::String getProgramName(int index) override { return {}; }
+    void changeProgramName(int index, const juce::String& newName) override {}
 
-    int getNumPrograms() override;
-    int getCurrentProgram() override;
-    void setCurrentProgram (int index) override;
-    const juce::String getProgramName (int index) override;
-    void changeProgramName (int index, const juce::String& newName) override;
+    void getStateInformation(juce::MemoryBlock& destData) override;
+    void setStateInformation(const void* data, int sizeInBytes) override;
 
-    void getStateInformation (juce::MemoryBlock& destData) override;
-    void setStateInformation (const void* data, int sizeInBytes) override;
-
+    // APVTS and parameters
+    juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    static std::vector<bool> generateEuclideanPattern (int steps, int triggers, int offset);
 
-    struct ChannelParams
+    // Rhythm generation
+    static std::vector<bool> generateEuclideanPattern(int steps, int triggers, int offset);
+
+    // Drum channel definitions
+    static constexpr int NUM_DRUMS = 6;
+    static constexpr int NUM_SAMPLES_PER_DRUM = 4;
+
+    struct DrumSample
     {
-        std::atomic<float>* param1 = nullptr;
-        std::atomic<float>* param2 = nullptr;
-        std::atomic<float>* param3 = nullptr;
-        std::atomic<float>* steps  = nullptr;
-        std::atomic<float>* triggers = nullptr;
-        std::atomic<float>* offset   = nullptr;
-    };
-
-    float getCachedParam (int channelIndex, int paramType) const;
-
-    struct SynthChannel
-    {
-        std::atomic<bool> isMuted { false };
+        juce::AudioSampleBuffer buffer;
+        int sampleIndex = 0;
+        double readPointer = 0.0;
+        bool isPlaying = false;
+        float envLevel = 0.0f;
+        bool isMuted = false;
     };
 
     struct DrumChannel
     {
-        std::vector<juce::AudioSampleBuffer> samplePool;
-        
-        // Upgraded to std::atomic to eliminate multi-threading data races
-        std::atomic<int> currentSampleIndex { 0 };
-        std::atomic<double> readPointer { 0.0 };
-        std::atomic<bool> isPlaying { false };
-        std::atomic<float> envLevel { 0.0f };
-
-        std::atomic<bool> isMuted { false };
-        std::atomic<bool> isFillActive { false };
+        std::array<juce::AudioSampleBuffer, NUM_SAMPLES_PER_DRUM> samples;
+        std::atomic<int> currentSampleIndex{0};
+        std::atomic<double> readPointer{0.0};
+        std::atomic<bool> isPlaying{false};
+        std::atomic<float> envLevel{0.0f};
+        std::atomic<bool> isMuted{false};
 
         void trigger()
         {
-            if (samplePool.empty()) 
+            if (samples[0].getNumSamples() == 0)
                 return;
-
-            readPointer.store (0.0);
-            isPlaying.store (true);
-            envLevel.store (1.0f);
+            readPointer.store(0.0);
+            isPlaying.store(true);
+            envLevel.store(1.0f);
         }
 
         void selectRandomSample()
         {
-            if (samplePool.empty()) 
-                return;
-
             auto& random = juce::Random::getSystemRandom();
-            currentSampleIndex.store (random.nextInt (static_cast<int> (samplePool.size())));
+            currentSampleIndex.store(random.nextInt(NUM_SAMPLES_PER_DRUM));
         }
 
         const juce::AudioSampleBuffer* getActiveBuffer() const
         {
             int idx = currentSampleIndex.load();
-            if (samplePool.empty() || idx < 0 || idx >= samplePool.size())
+            if (idx < 0 || idx >= NUM_SAMPLES_PER_DRUM)
                 return nullptr;
-
-            return &samplePool[idx];
+            return &samples[idx];
         }
     };
 
-    std::array<SynthChannel, 2> synthChannels;
-    std::array<DrumChannel, 6> drumChannels;
-    
-    std::array<ChannelParams, 8> cachedParams;
-
-    juce::AudioProcessorValueTreeState apvts;
+    std::array<DrumChannel, NUM_DRUMS> drumChannels;
 
 private:
     double currentSampleRate = 44100.0;
     int lastTotal16thStep = -1;
     juce::AudioFormatManager formatManager;
 
-    std::vector<std::pair<int, int>> scheduledNoteOffs;
+    void loadDrumSamples();
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TectonicAudioProcessor)
 };

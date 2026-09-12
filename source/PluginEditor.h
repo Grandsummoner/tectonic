@@ -1,22 +1,25 @@
 #pragma once
+
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "TectonicChannel.h"
+#include "DrumChannelComponent.h"
 
-class TectonicAudioProcessorEditor  : public juce::AudioProcessorEditor
+/**
+ * Main editor UI for Tectonic sequencer.
+ * Displays 6 drum channels in a grid layout with pattern editing.
+ */
+class TectonicAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
-    TectonicAudioProcessorEditor (TectonicAudioProcessor&);
+    explicit TectonicAudioProcessorEditor(TectonicAudioProcessor&);
     ~TectonicAudioProcessorEditor() override;
 
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
 
-    int getFocusedChannel() const;
-
 private:
-    TectonicAudioProcessor& audioProcessor;
-    std::array<std::unique_ptr<TectonicChannel>, 8> channels;
+    TectonicAudioProcessor& processor;
+    std::array<std::unique_ptr<DrumChannelComponent>, TectonicAudioProcessor::NUM_DRUMS> drumChannels;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TectonicAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TectonicAudioProcessorEditor)
 };
