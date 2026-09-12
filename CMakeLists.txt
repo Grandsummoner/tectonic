@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(tectonic VERSION 1.0.0 LANGUAGES C CXX)
 
-# 1. Include JUCE
 add_subdirectory(JUCE)
 
-# 2. Add and define the Tectonic plugin targets (VST3 ONLY)
 juce_add_plugin(tectonic
     COMPANY_NAME "Navy Audio"
     BUNDLE_ID "com.navyaudio.tectonic"
@@ -20,10 +18,8 @@ juce_add_plugin(tectonic
     COPY_PLUGIN_AFTER_BUILD FALSE
 )
 
-# 3. Generate JuceHeader.h
 juce_generate_juce_header(tectonic)
 
-# 4. Source Files
 target_sources(tectonic PRIVATE
     source/PluginProcessor.cpp
     source/PluginProcessor.h
@@ -31,11 +27,8 @@ target_sources(tectonic PRIVATE
     source/PluginEditor.h
     source/DrumChannelComponent.cpp
     source/DrumChannelComponent.h
-    source/PresetManager.cpp
-    source/PresetManager.h
 )
 
-# 5. Compiler Definitions
 target_compile_definitions(tectonic
     PUBLIC
         JUCE_WEB_BROWSER=0
@@ -43,41 +36,34 @@ target_compile_definitions(tectonic
         JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1
 )
 
-# 6. Binary Data (Drum Samples)
 juce_add_binary_data(TectonicAssets
     SOURCES
         assets/samples/D1_Kick_1.wav
         assets/samples/D1_Kick_2.wav
         assets/samples/D1_Kick_3.wav
         assets/samples/D1_Kick_4.wav
-        
         assets/samples/D2_Snare_1.wav
         assets/samples/D2_Snare_2.wav
         assets/samples/D2_Snare_3.wav
         assets/samples/D2_Snare_4.wav
-        
         assets/samples/D3_OHH_1.wav
         assets/samples/D3_OHH_2.wav
         assets/samples/D3_OHH_3.wav
         assets/samples/D3_OHH_4.wav
-        
         assets/samples/D4_CHH_1.wav
         assets/samples/D4_CHH_2.wav
         assets/samples/D4_CHH_3.wav
         assets/samples/D4_CHH_4.wav
-        
         assets/samples/D5_Clap_1.wav
         assets/samples/D5_Clap_2.wav
         assets/samples/D5_Clap_3.wav
         assets/samples/D5_Clap_4.wav
-        
         assets/samples/D6_Bell_1.wav
         assets/samples/D6_Bell_2.wav
         assets/samples/D6_Bell_3.wav
         assets/samples/D6_Bell_4.wav
 )
 
-# 7. Link Libraries
 target_link_libraries(tectonic
     PRIVATE
         TectonicAssets
