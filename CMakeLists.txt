@@ -1,56 +1,49 @@
 cmake_minimum_required(VERSION 3.15)
 
-# Added 'C' alongside 'CXX' to match Navy Arp compiler setup
 project(tectonic VERSION 1.0.0 LANGUAGES C CXX)
 
-# 1. Include your local JUCE directory
+# 1. Include JUCE
 add_subdirectory(JUCE)
 
-# 2. Add and define the Tectonic plugin targets (STRICTLY VST3 ONLY)
+# 2. Add and define the Tectonic plugin targets (VST3 ONLY)
 juce_add_plugin(tectonic
     COMPANY_NAME "Navy Audio"
-    BUNDLE_ID "com.navyaudio.tectonic"       
-    PLUGIN_MANUFACTURER_CODE "Navy"         
-    PLUGIN_CODE "Tect"                      
-    FORMATS VST3                            # Strictly VST3 format only
+    BUNDLE_ID "com.navyaudio.tectonic"
+    PLUGIN_MANUFACTURER_CODE "Navy"
+    PLUGIN_CODE "Tect"
+    FORMATS VST3
     PRODUCT_NAME "Tectonic"
     PLUGIN_NAME "Tectonic"
     IS_SYNTH TRUE
-    NEEDS_MIDI_INPUT TRUE                  
-    NEEDS_MIDI_OUTPUT TRUE                 
-    COPY_PLUGIN_AFTER_BUILD FALSE           # Disable default multi-folder copy step
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE
+    COPY_PLUGIN_AFTER_BUILD FALSE
 )
 
-# 3. Mandatory generator macro call to create JuceHeader.h for your target
+# 3. Generate JuceHeader.h
 juce_generate_juce_header(tectonic)
 
-# 4. Custom post-build step to copy ONLY the single flat VST3 file to your custom folder
-add_custom_command(TARGET tectonic_VST3 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "D:/Music - Software/VST"
-    COMMAND ${CMAKE_COMMAND} -E copy
-    "$<TARGET_FILE:tectonic_VST3>"
-    "D:/Music - Software/VST/Tectonic.vst3"
-)
-
-# 5. Source Files mapping
+# 4. Source Files
 target_sources(tectonic PRIVATE
     source/PluginProcessor.cpp
     source/PluginProcessor.h
     source/PluginEditor.cpp
     source/PluginEditor.h
-    source/TectonicChannel.cpp
-    source/TectonicChannel.h
+    source/DrumChannelComponent.cpp
+    source/DrumChannelComponent.h
+    source/PresetManager.cpp
+    source/PresetManager.h
 )
 
-# 6. Global compiler definitions
+# 5. Compiler Definitions
 target_compile_definitions(tectonic
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
-        JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1 # Added to bypass parameter automation ID conflict checks
+        JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1
 )
 
-# Add and define binary data target to compile our renamed drum samples
+# 6. Binary Data (Drum Samples)
 juce_add_binary_data(TectonicAssets
     SOURCES
         assets/samples/D1_Kick_1.wav
@@ -84,10 +77,10 @@ juce_add_binary_data(TectonicAssets
         assets/samples/D6_Bell_4.wav
 )
 
-# 7. Library dependencies
+# 7. Link Libraries
 target_link_libraries(tectonic
     PRIVATE
-        TectonicAssets       
+        TectonicAssets
         juce::juce_audio_utils
         juce::juce_audio_processors
         juce::juce_gui_extra
